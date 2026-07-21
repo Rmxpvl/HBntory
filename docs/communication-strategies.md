@@ -62,4 +62,4 @@
 
 ## AI Scope
 
-No AI agent or AI Query Service is implemented. The public client returns deterministic product and stock results from MCP tools and read-only database queries.
+The public client's MVP returns deterministic product and stock results from MCP tools and read-only database queries; no AI agent or AI Query Service is required for the mandatory scope. An AI Query Service is a stretch goal (see MVP definition, Phase 7), attempted only after the mandatory scope is complete and tested. If built, it communicates with the Client Web Interface via REST or WebSocket (decided when the work is scheduled) and reuses the existing Product MCP Server and controlled stock-query path.

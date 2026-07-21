@@ -2,7 +2,7 @@
 
 ## MVP Goal
 
-Deliver a secure inventory Backoffice plus an anonymous, deterministic product-and-stock search interface. Product details come from the supplied API through the appropriate integration path; stock remains in PostgreSQL. No AI is used.
+Deliver a secure inventory Backoffice plus an anonymous, deterministic product-and-stock search interface. Product details come from the supplied API through the appropriate integration path; stock remains in PostgreSQL. AI (Phase 7) is a stretch goal attempted only if time remains after the mandatory scope.
 
 ## Phase 1 — Database and Backoffice Foundation
 
@@ -73,6 +73,16 @@ Common users can, only for their assigned branch:
 - Manual QA checklist.
 - Documented startup and testing commands.
 
+## Phase 7 — Optional AI Layer (Time Permitting)
+
+Attempted only after Phases 1-6 are complete and tested.
+
+- Independent AI Query Service, separate from the Backoffice.
+- One or more AI agents connected to the Product MCP Server for product data.
+- Controlled agent access to stock data (extended MCP tools or an internal read-only API).
+- Natural-language question endpoint (REST or WebSocket) consumed by the Client Web Interface as an additional entry point alongside the deterministic search.
+- Grounded responses only: the agent must not invent product, stock or branch data, and must state clearly when information is unavailable.
+
 ## Optional Features Only If Time Remains
 
 - More polished responsive styling.
@@ -83,9 +93,7 @@ Common users can, only for their assigned branch:
 
 ## Explicitly Outside the MVP
 
-- AI agents and an AI Query Service.
-- AI-generated natural-language answers.
-- WebSockets and streamed responses.
+- WebSockets and streamed responses for the deterministic client.
 - Conversation history.
 - Multiple administrators.
 - Branch CRUD screens.

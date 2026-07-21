@@ -10,7 +10,7 @@ HBntory is an inventory platform for a company with several physical branches. T
 - a Product MCP Server that exposes controlled product tools;
 - a public Client Web Interface for deterministic product and stock searches.
 
-AI agents and an AI Query Service are not part of the implementation. Public searches use explicit REST parameters and structured results rather than AI-generated answers.
+AI agents and an AI Query Service are treated as a stretch goal. They are implemented only after the mandatory Backoffice, Product MCP Server and deterministic Client Web Interface flows are complete and tested. The Client Web Interface ships in the MVP with deterministic, explicit REST search; a natural-language AI layer is added on top only if time remains.
 
 ## 2. Components and Responsibilities
 
@@ -72,6 +72,8 @@ The `client_web` component serves an anonymous search page and a small REST back
 - treats every request independently and stores no search history.
 
 The public service cannot create users or change stock.
+
+If time remains after the mandatory scope, an optional AI Query Service is added in front of this component: an independent backend with one or more AI agents that answer natural-language questions by calling the Product MCP Server and controlled stock queries, instead of the deterministic REST search parameters. It would not replace the deterministic client; it would be an additional entry point.
 
 ## 3. Data Flow
 
