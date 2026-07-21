@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">HBntory non-AI Backoffice service architecture</title>
+  <desc id="desc">An internal browser calls the Backoffice through REST. The Backoffice accesses PostgreSQL through SQLAlchemy and the external Product API through read-only REST.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+    </marker>
+    <style>
+      .title { font: 700 30px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 16px Arial, sans-serif; fill: #475569; }
+      .box-title { font: 700 20px Arial, sans-serif; fill: #0f172a; text-anchor: middle; }
+      .box-text { font: 15px Arial, sans-serif; fill: #334155; text-anchor: middle; }
+      .label { font: 700 14px Arial, sans-serif; fill: #334155; text-anchor: middle; }
+      .core { fill: #eff6ff; stroke: #2563eb; stroke-width: 3; rx: 14; }
+      .data { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 3; rx: 14; }
+      .external { fill: #fffbeb; stroke: #d97706; stroke-width: 3; rx: 14; }
+      .line { fill: none; stroke: #2563eb; stroke-width: 3; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="560" fill="#ffffff"/>
+  <text x="60" y="58" class="title">HBntory — Backoffice Service Architecture</text>
+  <text x="60" y="88" class="subtitle">Agreed implementation scope: Backoffice, local database and supplied Product API</text>
+
+  <rect x="55" y="205" width="260" height="130" class="core"/>
+  <text x="185" y="254" class="box-title">Internal Browser</text>
+  <text x="185" y="284" class="box-text">HTML, CSS and JavaScript</text>
+  <text x="185" y="310" class="box-text">Authenticated internal users</text>
+
+  <rect x="455" y="205" width="290" height="130" class="core"/>
+  <text x="600" y="254" class="box-title">Backoffice Service</text>
+  <text x="600" y="284" class="box-text">Authentication and authorisation</text>
+  <text x="600" y="310" class="box-text">Users and branch stock</text>
+
+  <rect x="885" y="125" width="260" height="130" class="data"/>
+  <text x="1015" y="174" class="box-title">PostgreSQL</text>
+  <text x="1015" y="204" class="box-text">Users, branches, product IDs</text>
+  <text x="1015" y="230" class="box-text">and stock quantities</text>
+
+  <rect x="885" y="325" width="260" height="130" class="external"/>
+  <text x="1015" y="374" class="box-title">External Product API</text>
+  <text x="1015" y="404" class="box-text">Read-only product catalogue</text>
+  <text x="1015" y="430" class="box-text">No HBntory stock data</text>
+
+  <path d="M315 270 L455 270" class="line"/>
+  <text x="385" y="248" class="label">REST</text>
+  <text x="385" y="294" class="label">session cookie</text>
+
+  <path d="M745 242 C795 215 825 195 885 190" class="line"/>
+  <text x="810" y="195" class="label">SQLAlchemy</text>
+
+  <path d="M745 300 C800 325 825 370 885 390" class="line"/>
+  <text x="810" y="351" class="label">REST · read only</text>
+
+  <text x="60" y="510" class="subtitle">Excluded: AI agents, AI Query Service, MCP, public chat interface, WebSockets and conversation history.</text>
+</svg>
