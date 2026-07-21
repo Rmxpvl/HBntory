@@ -1,56 +1,88 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
-  <title id="title">HBntory non-AI Backoffice service architecture</title>
-  <desc id="desc">An internal browser calls the Backoffice through REST. The Backoffice accesses PostgreSQL through SQLAlchemy and the external Product API through read-only REST.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title description">
+  <title id="title">HBntory initial service diagram</title>
+  <desc id="description">Backoffice and public client architecture with PostgreSQL, Product MCP Server and External Product API. AI is excluded.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+      <path d="M0,0 L0,6 L9,3 z" fill="#334155"/>
     </marker>
     <style>
-      .title { font: 700 30px Arial, sans-serif; fill: #0f172a; }
+      .title { font: 700 28px Arial, sans-serif; fill: #0f172a; }
       .subtitle { font: 16px Arial, sans-serif; fill: #475569; }
-      .box-title { font: 700 20px Arial, sans-serif; fill: #0f172a; text-anchor: middle; }
-      .box-text { font: 15px Arial, sans-serif; fill: #334155; text-anchor: middle; }
-      .label { font: 700 14px Arial, sans-serif; fill: #334155; text-anchor: middle; }
-      .core { fill: #eff6ff; stroke: #2563eb; stroke-width: 3; rx: 14; }
-      .data { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 3; rx: 14; }
-      .external { fill: #fffbeb; stroke: #d97706; stroke-width: 3; rx: 14; }
-      .line { fill: none; stroke: #2563eb; stroke-width: 3; marker-end: url(#arrow); }
+      .section { font: 700 15px Arial, sans-serif; fill: #334155; letter-spacing: 1px; }
+      .box-title { font: 700 18px Arial, sans-serif; fill: #0f172a; }
+      .box-text { font: 14px Arial, sans-serif; fill: #334155; }
+      .edge { fill: none; stroke: #334155; stroke-width: 2.2; marker-end: url(#arrow); }
+      .edge-label { font: 600 13px Arial, sans-serif; fill: #334155; }
+      .note { font: 14px Arial, sans-serif; fill: #7f1d1d; }
     </style>
   </defs>
 
-  <rect width="1200" height="560" fill="#ffffff"/>
-  <text x="60" y="58" class="title">HBntory — Backoffice Service Architecture</text>
-  <text x="60" y="88" class="subtitle">Agreed implementation scope: Backoffice, local database and supplied Product API</text>
+  <rect width="1200" height="820" fill="#f8fafc"/>
+  <text x="60" y="55" class="title">HBntory — Initial Service Architecture</text>
+  <text x="60" y="82" class="subtitle">Mandatory non-AI scope: Backoffice, public client, Product MCP Server, PostgreSQL and Product API</text>
 
-  <rect x="55" y="205" width="260" height="130" class="core"/>
-  <text x="185" y="254" class="box-title">Internal Browser</text>
-  <text x="185" y="284" class="box-text">HTML, CSS and JavaScript</text>
-  <text x="185" y="310" class="box-text">Authenticated internal users</text>
+  <text x="60" y="130" class="section">INTERNAL INVENTORY FLOW</text>
 
-  <rect x="455" y="205" width="290" height="130" class="core"/>
-  <text x="600" y="254" class="box-title">Backoffice Service</text>
-  <text x="600" y="284" class="box-text">Authentication and authorisation</text>
-  <text x="600" y="310" class="box-text">Users and branch stock</text>
+  <rect x="60" y="155" width="235" height="125" rx="14" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+  <text x="88" y="194" class="box-title">Internal Browser</text>
+  <text x="88" y="222" class="box-text">HTML, CSS and JavaScript</text>
+  <text x="88" y="247" class="box-text">Authenticated staff access</text>
 
-  <rect x="885" y="125" width="260" height="130" class="data"/>
-  <text x="1015" y="174" class="box-title">PostgreSQL</text>
-  <text x="1015" y="204" class="box-text">Users, branches, product IDs</text>
-  <text x="1015" y="230" class="box-text">and stock quantities</text>
+  <rect x="430" y="155" width="300" height="125" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="458" y="194" class="box-title">Backoffice Service</text>
+  <text x="458" y="222" class="box-text">FastAPI + SQLAlchemy</text>
+  <text x="458" y="247" class="box-text">Users, roles and stock operations</text>
 
-  <rect x="885" y="325" width="260" height="130" class="external"/>
-  <text x="1015" y="374" class="box-title">External Product API</text>
-  <text x="1015" y="404" class="box-text">Read-only product catalogue</text>
-  <text x="1015" y="430" class="box-text">No HBntory stock data</text>
+  <rect x="865" y="155" width="275" height="125" rx="14" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="893" y="194" class="box-title">PostgreSQL</text>
+  <text x="893" y="222" class="box-text">Users, branches and stock</text>
+  <text x="893" y="247" class="box-text">External product IDs only</text>
 
-  <path d="M315 270 L455 270" class="line"/>
-  <text x="385" y="248" class="label">REST</text>
-  <text x="385" y="294" class="label">session cookie</text>
+  <path d="M295 218 H430" class="edge"/>
+  <text x="315" y="204" class="edge-label">REST + session</text>
+  <path d="M730 218 H865" class="edge"/>
+  <text x="758" y="204" class="edge-label">SQLAlchemy</text>
 
-  <path d="M745 242 C795 215 825 195 885 190" class="line"/>
-  <text x="810" y="195" class="label">SQLAlchemy</text>
+  <text x="60" y="355" class="section">PUBLIC PRODUCT AND AVAILABILITY FLOW</text>
 
-  <path d="M745 300 C800 325 825 370 885 390" class="line"/>
-  <text x="810" y="351" class="label">REST · read only</text>
+  <rect x="60" y="380" width="235" height="130" rx="14" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="88" y="419" class="box-title">Public Browser</text>
+  <text x="88" y="447" class="box-text">Anonymous search interface</text>
+  <text x="88" y="472" class="box-text">No AI and no saved history</text>
 
-  <text x="60" y="510" class="subtitle">Excluded: AI agents, AI Query Service, MCP, public chat interface, WebSockets and conversation history.</text>
+  <rect x="385" y="380" width="280" height="130" rx="14" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+  <text x="413" y="419" class="box-title">Public Client Service</text>
+  <text x="413" y="447" class="box-text">REST backend in client_web</text>
+  <text x="413" y="472" class="box-text">Controlled read-only stock access</text>
+
+  <rect x="755" y="380" width="285" height="130" rx="14" fill="#f3e8ff" stroke="#9333ea" stroke-width="2"/>
+  <text x="783" y="419" class="box-title">Product MCP Server</text>
+  <text x="783" y="447" class="box-text">list_products</text>
+  <text x="783" y="472" class="box-text">get_product_details</text>
+
+  <path d="M295 445 H385" class="edge"/>
+  <text x="317" y="431" class="edge-label">REST</text>
+  <path d="M665 445 H755" class="edge"/>
+  <text x="676" y="431" class="edge-label">MCP HTTP</text>
+
+  <rect x="810" y="645" width="330" height="125" rx="14" fill="#f1f5f9" stroke="#475569" stroke-width="2"/>
+  <text x="838" y="684" class="box-title">External Product API</text>
+  <text x="838" y="712" class="box-text">Authoritative, read-only product data</text>
+  <text x="838" y="737" class="box-text">Products by ID or SKU</text>
+
+  <path d="M700 280 V345 H1120 V645" class="edge"/>
+  <rect x="913" y="331" width="112" height="24" rx="5" fill="#f8fafc"/>
+  <text x="920" y="348" class="edge-label">read-only REST</text>
+
+  <path d="M897 510 V645" class="edge"/>
+  <rect x="908" y="564" width="112" height="24" rx="5" fill="#f8fafc"/>
+  <text x="915" y="581" class="edge-label">read-only REST</text>
+
+  <path d="M525 380 V340 Q525 315 550 315 H1002 Q1027 315 1027 280" class="edge"/>
+  <rect x="703" y="301" width="203" height="24" rx="5" fill="#f8fafc"/>
+  <text x="711" y="318" class="edge-label">read-only SQLAlchemy</text>
+
+  <rect x="60" y="680" width="285" height="66" rx="10" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="82" y="708" class="note">Excluded: AI agents and AI Query Service.</text>
+  <text x="82" y="731" class="note">MCP and the public client remain in scope.</text>
 </svg>

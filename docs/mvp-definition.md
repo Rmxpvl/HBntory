@@ -2,7 +2,7 @@
 
 ## MVP Goal
 
-Deliver a secure, functional inventory Backoffice for one administrator and branch-bound common users. Product details come from the supplied external API; local stock remains in PostgreSQL.
+Deliver a secure inventory Backoffice plus an anonymous, deterministic product-and-stock search interface. Product details come from the supplied API through the appropriate integration path; stock remains in PostgreSQL. No AI is used.
 
 ## Phase 1 — Database and Backoffice Foundation
 
@@ -45,13 +45,33 @@ Common users can, only for their assigned branch:
 
 `admin` cannot manage stock, and common users cannot manage users.
 
-## Phase 4 — Functional Interface and QA
+## Phase 4 — Product MCP Server
 
-- Simple HTML, CSS and JavaScript pages for every mandatory operation.
-- Product details retrieved live from the Product API.
+- Independent MCP server in `product_mcp_server/`.
+- `list_products` tool backed by the external Product API.
+- `get_product_details` tool accepting numeric IDs or SKUs.
+- Explicit handling of API timeouts, `404` responses and service errors.
+- No product metadata stored locally.
+
+## Phase 5 — Public Client Web Interface
+
+- Anonymous page in `client_web/`.
+- Search-box interface using REST rather than WebSockets.
+- Product catalogue search and product-detail display.
+- Branch availability and quantity display.
+- Products-in-branch listing.
+- Product data obtained through MCP tools.
+- Stock obtained through controlled, read-only database queries.
+- Independent requests with no saved history.
+- No AI-generated answers.
+
+## Phase 6 — Integration and QA
+
+- Simple functional HTML, CSS and JavaScript interfaces.
 - Clear validation and external-service errors.
 - Automated integration tests.
-- Manual QA checklist and documented startup commands.
+- Manual QA checklist.
+- Documented startup and testing commands.
 
 ## Optional Features Only If Time Remains
 
@@ -64,8 +84,7 @@ Common users can, only for their assigned branch:
 ## Explicitly Outside the MVP
 
 - AI agents and an AI Query Service.
-- MCP servers or MCP database tools.
-- Public chat or natural-language queries.
+- AI-generated natural-language answers.
 - WebSockets and streamed responses.
 - Conversation history.
 - Multiple administrators.
@@ -86,4 +105,7 @@ Common users can, only for their assigned branch:
 - Invalid quantities, branches and products are rejected.
 - Stock cannot become negative at application or database level.
 - Product details are absent from the local schema.
+- MCP tools list products and return product details.
+- The anonymous public client uses REST and cannot change data.
+- Product API failures produce clear errors.
 - Mandatory flows pass automated tests and the manual QA checklist.
