@@ -1,312 +1,129 @@
-# HBntory - Inventory Management Platform
-## System Architecture Document
-
-**Projet :** HBntory Inventory Management Platform
-**Version :** 1.0
-**Équipe :** Rémy, Nicolas, Aleksandre
-**Date :** 20/07/2026
-
----
-
-## 1. Vue d'ensemble du projet
-
-Le projet HBntory est un projet d'équipe permettant d'appliquer tout ce qu'on a vu dans le trimestre. Ce projet simule une plateforme de gestion de marchandise de compagnie.
-
-### Objectifs principaux
-
-- **Interface web client** : permet au client de chercher un objet via un chatbot/IA et d'obtenir un retour de la plateforme indiquant si l'objet est disponible et sa quantité.
-- **Backoffice** : interface utilisateur privée permettant aux employés d'accéder aux stocks et informations associées. Un compte admin peut créer, modifier et supprimer des comptes d'utilisateurs employés.
-
----
-
-## 2. Architecture générale
-
-L'application est découpée en plusieurs services afin de respecter une architecture modulaire.
-
-```
-                         ┌─────────────────────┐
-                         │   External Product   │
-                         │         API          │
-                         │       (Docker)       │
-                         └──────────┬───────────┘
-                                    │ HTTP
-                                    ▼
-                         ┌──────────────────────┐
-                         │   Product MCP        │
-                         │      Server          │
-                         └──────────┬───────────┘
-                                    │ MCP Protocol
-                                    ▼
-                         ┌──────────────────────┐
-                         │   AI Query Service    │
-                         │     AI Agent(s)       │
-                         └──────────┬───────────┘
-                                    │ SQL Queries
-                                    ▼
-              ┌────────────────────────────────────────┐
-              │            PostgreSQL Database          │
-              │                                          │
-              │      Users | Branches | Stock            │
-              └────────────────────▲─────────────────────┘
-                                    │ SQLAlchemy
-                                    │
-                         ┌──────────┴───────────┐
-                         │     Backoffice        │
-                         │      Service          │
-                         └──────────┬───────────┘
-                                    │ REST
-                                    ▼
-                         ┌──────────────────────┐
-                         │   Internal Users      │
-                         │   Web Interface       │
-                         └──────────────────────┘
-
+# HBntory — Architecture du système
 
-                         ┌──────────────────────┐
-                         │    Client Web         │
-                         │     Interface         │
-                         └──────────┬───────────┘
-                                    │ REST
-                                    ▼
-                         ┌──────────────────────┐
-                         │   AI Query Service    │
-                         └──────────────────────┘
-```
+## 1. Périmètre
 
-Chaque composant possède une responsabilité précise, détaillée section 3.
+HBntory est une plateforme de gestion des stocks destinée à une entreprise possédant plusieurs agences. Le périmètre retenu, sans intelligence artificielle, comprend :
 
----
+- un Backoffice authentifié destiné aux utilisateurs internes ;
+- PostgreSQL pour les utilisateurs, les agences et les stocks ;
+- l'API Produit externe fournie en lecture seule ;
+- un serveur MCP Produit exposant des outils contrôlés ;
+- une interface web publique permettant des recherches déterministes sur les produits et les stocks.
 
-## 3. Description des composants
+Les agents IA et l'AI Query Service sont exclus de l'implémentation. Les recherches publiques reposent sur des paramètres REST explicites et des résultats structurés, et non sur des réponses générées par une IA.
 
-### 3.1 Backoffice
+## 2. Composants et responsabilités
 
-Application utilisée par les employés.
+### Service Backoffice
 
-**Responsabilités :**
-- authentification
-- gestion des utilisateurs
-- gestion des agences (branches)
-- gestion des stocks
-- contrôle des droits d'accès
+Le Backoffice est un service FastAPI doté d'une interface simple en HTML, CSS et JavaScript. Il :
 
-**Technologies :** FastAPI, SQLAlchemy, PostgreSQL, JWT, bcrypt
+- authentifie les utilisateurs internes ;
+- applique les rôles et les restrictions liées aux agences côté serveur ;
+- permet à l'unique utilisateur `admin` de lister, créer, modifier et désactiver les utilisateurs communs ;
+- permet à `admin` de modifier le mot de passe ou l'agence d'un utilisateur commun ;
+- interdit à `admin` toute opération sur les stocks ;
+- permet aux utilisateurs communs de consulter, lister, ajouter et retirer du stock uniquement dans leur agence ;
+- accède aux données locales avec SQLAlchemy ;
+- récupère les informations produit auprès de l'API externe au moyen de requêtes REST en lecture seule.
 
-### 3.2 Base de données
+Il n'existe qu'un seul administrateur, nommé `admin`. Chaque utilisateur commun est rattaché à une seule agence. Le serveur détermine cette agence à partir du compte authentifié et ne fait pas confiance à une agence transmise par le navigateur.
 
-Stocke uniquement les informations propres à notre application.
+### Base de données PostgreSQL
 
-**Utilisateurs**
-- identifiant
-- nom d'utilisateur
-- mot de passe chiffré
-- rôle
-- agence associée
-- statut actif/inactif
+La base locale contient uniquement :
 
-**Agences**
-- identifiant
-- nom
-- localisation
+- `users` : nom d'utilisateur, empreinte du mot de passe, rôle, agence et état de suppression logique ;
+- `branches` : identifiant et nom de l'agence ;
+- `stock` : agence, identifiant numérique externe du produit et quantité disponible.
 
-**Stock**
-- agence
-- identifiant du produit
-- quantité disponible
+Elle ne contient ni nom, ni SKU, ni description, ni prix, ni image, ni métadonnée de produit.
 
-**Données volontairement absentes**
+### API Produit externe
 
-Conformément au sujet, nous ne stockons jamais :
-- le nom du produit
-- sa description
-- son prix
-- son image
-- ses caractéristiques
+L'API fournie constitue la source de référence des informations produit. Elle :
 
-Nous conservons uniquement l'identifiant du produit (`product_id`), qui permet d'interroger l'API externe.
+- fournit la liste des produits ;
+- renvoie les détails d'un produit à partir de son identifiant numérique ou de son SKU ;
+- est accessible uniquement en lecture ;
+- ne gère pas les quantités de stock propres à HBntory.
 
-### 3.3 Product API
+Le Backoffice vérifie l'existence d'un produit auprès de cette API avant de créer un stock. Seul l'identifiant numérique canonique renvoyé par l'API est conservé.
 
-Fournie dans un conteneur Docker. Unique source d'information concernant les produits.
+### Serveur MCP Produit
 
-**Permet de :**
-- récupérer la liste des produits
-- récupérer le détail d'un produit
+Le serveur MCP Produit est un service indépendant servant d'intermédiaire avec l'API Produit. Il expose au minimum :
 
-Notre application ne modifie jamais ces données.
+- `list_products` : renvoie les produits disponibles avec leurs identifiants et un résumé utile ;
+- `get_product_details` : renvoie un produit à partir de son identifiant numérique ou de son SKU.
 
-### 3.4 Product MCP Server
+Il ne contient aucune IA. Le service web public appelle ces outils au moyen de MCP sur HTTP Streamable. Le serveur MCP ne modifie jamais les produits et n'enregistre pas leurs métadonnées.
 
-Intermédiaire entre l'intelligence artificielle et la Product API. Expose plusieurs outils que l'agent IA peut utiliser.
+### Service client public et interface web
 
-**Outils disponibles**
+Le composant `client_web` fournit une page de recherche anonyme et un petit backend REST. Il :
 
-| Outil | Description |
-|---|---|
-| `list_products()` | Retourne la liste des produits disponibles |
-| `get_product_details(product_id)` | Retourne toutes les informations concernant un produit |
+- permet aux visiteurs de rechercher des produits ;
+- affiche les détails du produit sélectionné ;
+- indique les agences qui possèdent ce produit et les quantités disponibles ;
+- liste les produits disponibles dans une agence sélectionnée ;
+- obtient les données produit auprès du serveur MCP Produit ;
+- effectue des consultations de stock contrôlées et en lecture seule avec SQLAlchemy ;
+- traite chaque requête indépendamment et ne conserve aucun historique.
 
-Ainsi, l'IA ne dialogue jamais directement avec l'API externe.
+Le service public ne peut ni créer des utilisateurs ni modifier les stocks.
 
-### 3.5 AI Query Service
+## 3. Circulation des données
 
-Service indépendant du Backoffice. Son rôle est de comprendre les questions des utilisateurs.
+### Authentification du Backoffice
 
-**Exemples :**
-- "Dans quelle agence puis-je trouver ce produit ?"
-- "Donne-moi les informations sur le produit 125."
+1. L'utilisateur transmet ses identifiants au Backoffice.
+2. Le Backoffice récupère le compte actif et vérifie le mot de passe à partir de son empreinte Argon2id.
+3. Une authentification réussie crée un cookie de session signé et inaccessible à JavaScript.
+4. Chaque requête protégée vérifie de nouveau le rôle, l'état du compte et l'agence.
 
-**Pour répondre, l'agent IA :**
-1. utilise le serveur MCP pour obtenir les informations sur les produits
-2. consulte notre base de données pour connaître les stocks disponibles
-3. construit ensuite une réponse
+### Consultation des stocks dans le Backoffice
 
-L'IA ne doit jamais inventer une information qu'elle ne possède pas.
+1. L'utilisateur commun demande à consulter son stock.
+2. Le serveur déduit son agence du compte authentifié.
+3. SQLAlchemy récupère les identifiants produit et les quantités enregistrées localement.
+4. Le Backoffice demande les informations correspondantes à l'API Produit.
+5. La réponse combinée est affichée sans enregistrer localement les informations produit.
 
-### 3.6 Interface Web Client
+### Modification des stocks
 
-Publique, aucune authentification nécessaire.
-
-**Contient :**
-- une zone de saisie
-- un bouton d'envoi
-- une zone affichant la réponse de l'IA
-
----
-
-## 4. Communication entre les services
-
-### 4.1 Backoffice
-
-Architecture choisie : **REST + HTML/CSS/JavaScript**
-
-**Pourquoi ?** Simple, bien adaptée aux opérations CRUD, facile à maintenir.
-
-**Limite :** le développement du frontend demande un peu plus de JavaScript qu'un rendu côté serveur.
-
-### 4.2 Client Web → AI Service
-
-Architecture choisie : **API REST**.
-
-Chaque question étant indépendante, il n'est pas nécessaire de maintenir une connexion permanente.
-
-**Exemple :**
-```
-POST /ask
-```
-avec une question. Le serveur répond immédiatement avec une réponse.
-
-**Pourquoi ne pas utiliser WebSocket ?**
-
-Les WebSockets sont particulièrement utiles lorsque :
-- une conversation est continue
-- les réponses arrivent progressivement (streaming)
-- plusieurs utilisateurs communiquent en temps réel
-
-Notre projet ne nécessite aucune de ces fonctionnalités. REST est donc plus simple et plus adapté.
-
-### 4.3 AI → MCP
-
-L'agent IA communique avec le serveur MCP grâce au protocole MCP.
-
-Cela permet de séparer complètement l'intelligence artificielle de l'accès aux produits, rendant le système plus modulaire.
-
----
-
-## 5. Authentification et sécurité
-
-Tous les utilisateurs du Backoffice doivent être authentifiés.
-
-Les mots de passe sont stockés sous forme chiffrée grâce à **bcrypt**, choisi car :
-- spécialement conçu pour le stockage des mots de passe
-- ajoute automatiquement un "salt"
-- ralentit volontairement les calculs afin de limiter les attaques par force brute
-
-Une fois connecté, l'utilisateur reçoit un **JWT** utilisé pour les requêtes suivantes.
-
-### 5.1 Gestion des rôles
-
-**Administrateur** peut :
-- créer un utilisateur
-- modifier un utilisateur
-- supprimer (soft delete) un utilisateur
-- changer un mot de passe
-- affecter une agence
-
-Il ne peut en revanche pas gérer les stocks.
-
-**Utilisateur standard**
-
-Chaque utilisateur est rattaché à une seule agence. Il peut uniquement :
-- consulter son stock
-- ajouter du stock
-- retirer du stock
-
-Il ne peut jamais accéder aux stocks d'une autre agence.
-
-Toutes ces vérifications sont effectuées côté serveur, afin d'empêcher toute tentative de contournement.
-
----
-
-## 6. Circulation des données
-
-### Exemple 1
-
-**Question :** "Donne-moi les informations du produit 152."
-
-1. Le client envoie sa question.
-2. L'AI Query Service reçoit la demande.
-3. L'agent IA appelle le serveur MCP.
-4. Le serveur MCP interroge la Product API.
-5. Les informations sont renvoyées à l'IA.
-6. L'IA génère une réponse.
-7. La réponse est affichée au client.
-
-### Exemple 2
-
-**Question :** "Dans quelle agence puis-je trouver ce produit ?"
-
-1. Le client envoie la question.
-2. L'agent récupère les informations produit via le MCP.
-3. Il consulte ensuite la table des stocks dans PostgreSQL.
-4. Il identifie les agences possédant le produit.
-5. Il construit la réponse finale.
-
----
-
-## 7. MVP (Minimum Viable Product)
-
-Notre priorité est de livrer un projet entièrement fonctionnel avant d'ajouter des fonctionnalités secondaires.
-
-| Étape | Contenu |
-|---|---|
-| 1 | Base de données, authentification, gestion des utilisateurs, gestion des agences |
-| 2 | Gestion des stocks |
-| 3 | Connexion à la Product API |
-| 4 | Serveur MCP |
-| 5 | Service IA |
-| 6 | Interface web publique |
-
----
-
-## 8. Fonctionnalités optionnelles
-
-Si le temps le permet, nous ajouterons :
-- une interface plus moderne
-- un historique des mouvements de stock
-- des recommandations de produits
-- des statistiques de stock
-- une réponse IA en streaming
-
----
-
-## 9. Conclusion
-
-Nous avons choisi une architecture composée de plusieurs services indépendants afin de faciliter la maintenance, les tests et l'évolution de l'application.
-
-Les principaux choix techniques sont motivés par la simplicité, la séparation des responsabilités et le respect des exigences du projet.
-
-- REST est utilisé pour les communications HTTP, car il est adapté à des requêtes indépendantes.
-- Le serveur MCP sert d'intermédiaire entre l'IA et la Product API, ce qui rend l'accès aux données produit sécurisé et modulaire.
-- PostgreSQL stocke uniquement les données locales (utilisateurs, agences et stocks), tandis que toutes les informations produit proviennent exclusivement de la Product API.
-- Le Backoffice et le service IA sont volontairement séparés, afin de respecter une architecture claire et évolutive.
+1. Le serveur vérifie qu'il s'agit d'un utilisateur commun actif.
+2. Il déduit l'agence du compte authentifié.
+3. Il n'accepte qu'une quantité entière strictement positive.
+4. Il valide le produit auprès de l'API externe.
+5. Il modifie le stock dans une transaction.
+6. Un retrait est refusé si la quantité disponible est insuffisante.
+7. Une contrainte de base de données garantit que la quantité ne devient jamais négative.
+
+### Recherche publique de produits et de stocks
+
+1. Un visiteur anonyme lance une recherche de produit ou d'agence par REST.
+2. Le service client public appelle le serveur MCP Produit pour obtenir les informations produit.
+3. Le serveur MCP appelle l'API Produit externe en lecture seule.
+4. Lorsqu'une information de stock est nécessaire, le service client public effectue une requête contrôlée et en lecture seule dans la base.
+5. Le service combine les résultats et renvoie des données structurées à la page.
+6. Aucune réponse générée par une IA et aucun historique n'interviennent.
+
+## 4. Règles de sécurité et d'intégrité
+
+- Aucun mot de passe n'est enregistré en clair.
+- Argon2id est utilisé, car cet algorithme est conçu pour le stockage des mots de passe et résiste aux attaques par force brute grâce à des coûts mémoire et de calcul configurables.
+- Le Backoffice utilise un cookie de session signé, inaccessible à JavaScript et limité au même site. Les requêtes qui modifient des données sont protégées contre les attaques CSRF.
+- L'authentification et les autorisations sont contrôlées côté serveur.
+- `admin` n'est rattaché à aucune agence et ne peut pas modifier les stocks.
+- Chaque utilisateur commun dépend d'une seule agence et ne peut pas en sélectionner une autre.
+- Un utilisateur désactivé ne peut plus s'authentifier ni conserver son accès.
+- Toute modification de stock exige un entier positif et ne peut produire une quantité négative.
+- Les points d'accès publics et leurs accès à la base sont strictement en lecture seule.
+- Les secrets sont fournis par des variables d'environnement et ne sont pas versionnés.
+
+## 5. Livrables associés
+
+- [Schéma initial des services](initial-service-diagram.md)
+- [Stratégie de communication](communication-strategies.md)
+- [Définition du MVP](mvp-definition.md)
