@@ -11,6 +11,9 @@
 | Client Service → Product MCP Server | MCP over Streamable HTTP |
 | Product MCP Server → Product API | Read-only REST |
 | Client Service → stock database | Controlled, read-only SQLAlchemy queries |
+| Public browser → AI Query Service (final phase) | REST |
+| AI Query Service → Product MCP Server (final phase) | MCP over Streamable HTTP |
+| AI Query Service → stock database (final phase) | Controlled, read-only SQLAlchemy queries |
 
 ## Backoffice: REST with HTML, CSS and JavaScript
 
@@ -60,6 +63,14 @@
 
 **Trade-off:** This mechanism is intended for the browser-based Backoffice. An unrelated API client would require a separate authentication method.
 
-## AI Scope
+## AI Query Service (final phase)
 
-No AI agent or AI Query Service is implemented. The public client returns deterministic product and stock results from MCP tools and read-only database queries.
+The AI Query Service is scheduled as the final phase and built last, once the deterministic foundation is stable — it is deferred, not dropped.
+
+**Selected option:** The Client Web Interface sends each natural-language question to the AI Query Service over REST. The service uses one or more AI agents that reach product data through the Product MCP Server (MCP over Streamable HTTP) and stock through controlled, read-only queries.
+
+**Main benefit:** It reuses the MCP tools and stock-access boundaries already built for the deterministic client, so the AI layer adds agent reasoning without introducing new data-access paths.
+
+**Trade-off:** It adds an AI dependency and non-deterministic output, so answers must be grounded in tool results and must clearly report when information is unavailable.
+
+Until this phase lands, the public client returns deterministic product and stock results from the MCP tools and read-only database queries.

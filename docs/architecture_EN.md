@@ -2,15 +2,16 @@
 
 ## 1. Scope
 
-HBntory is an inventory platform for a company with several physical branches. The agreed non-AI implementation contains:
+HBntory is an inventory platform for a company with several physical branches. The implementation is delivered in two stages — a deterministic foundation first, then an AI layer. It contains:
 
 - an authenticated Backoffice for internal users;
 - PostgreSQL for users, branches and stock;
 - the supplied read-only Product API;
 - a Product MCP Server that exposes controlled product tools;
-- a public Client Web Interface for deterministic product and stock searches.
+- a public Client Web Interface for product and stock searches;
+- an AI Query Service, added as the final phase, that answers natural-language questions using the MCP tools and stock data.
 
-AI agents and an AI Query Service are not part of the implementation. Public searches use explicit REST parameters and structured results rather than AI-generated answers.
+The AI Query Service is delivered in the final phase, after the deterministic foundation is stable — it is deferred, not dropped. Until then, public searches use explicit REST parameters and structured results; once the AI layer lands, the Client Web Interface sends natural-language questions to the AI Query Service, which answers using the same MCP tools and stock data.
 
 ## 2. Components and Responsibilities
 
@@ -57,7 +58,7 @@ The Product MCP Server is an independent bridge to the external Product API. It 
 - `list_products`: return available products with useful identifiers and summaries;
 - `get_product_details`: return one product by numeric ID or SKU.
 
-It contains no AI. The public Client Service invokes these tools through MCP over Streamable HTTP. The MCP server never modifies products or stores their metadata.
+The MCP server is itself a plain bridge and contains no AI agent. Its tools are invoked over MCP over Streamable HTTP — by the public Client Service in the foundation stage, and by the AI Query Service once the final phase lands. The MCP server never modifies products or stores their metadata.
 
 ### Public Client Service and Web Interface
 
@@ -72,6 +73,20 @@ The `client_web` component serves an anonymous search page and a small REST back
 - treats every request independently and stores no search history.
 
 The public service cannot create users or change stock.
+
+### AI Query Service (final phase)
+
+The AI Query Service is an independent backend, separate from the Backoffice, added once the deterministic foundation (Phases 1–6) is stable. It:
+
+- receives a natural-language question from the Client Web Interface over REST;
+- uses one or more AI agents to plan an answer;
+- obtains product data through the Product MCP Server tools;
+- obtains stock through controlled, read-only access;
+- returns grounded answers only, and states clearly when information is unavailable;
+- invents no product names, details, stock values or branch availability;
+- treats every request independently and stores no conversation history.
+
+In this end state the Client Web Interface calls the AI Query Service rather than the MCP server directly.
 
 ## 3. Data Flow
 
@@ -107,7 +122,16 @@ The public service cannot create users or change stock.
 3. The MCP server calls the external Product API through read-only REST.
 4. When stock is needed, the Public Client Service performs a controlled read-only database query.
 5. The service combines the results and returns structured data to the page.
-6. No AI-generated answer or search history is involved.
+6. No search history is stored. This deterministic flow is the foundation; the AI query flow below is added in the final phase.
+
+### AI Query (final phase)
+
+1. An anonymous visitor submits a natural-language question through REST.
+2. The Client Web Interface forwards the question to the AI Query Service.
+3. An AI agent obtains product data through the Product MCP Server and stock through controlled, read-only access.
+4. The agent composes a grounded answer from the retrieved data only.
+5. If the tools return nothing, the service states that the information is unavailable.
+6. Each request is independent and no history is stored.
 
 ## 4. Security and Integrity Rules
 

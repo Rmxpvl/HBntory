@@ -2,15 +2,16 @@
 
 ## 1. Périmètre
 
-HBntory est une plateforme de gestion des stocks destinée à une entreprise possédant plusieurs agences. Le périmètre retenu, sans intelligence artificielle, comprend :
+HBntory est une plateforme de gestion des stocks destinée à une entreprise possédant plusieurs agences. L'implémentation est livrée en deux temps — d'abord une base déterministe, puis une couche IA. Elle comprend :
 
 - un Backoffice authentifié destiné aux utilisateurs internes ;
 - PostgreSQL pour les utilisateurs, les agences et les stocks ;
 - l'API Produit externe fournie en lecture seule ;
 - un serveur MCP Produit exposant des outils contrôlés ;
-- une interface web publique permettant des recherches déterministes sur les produits et les stocks.
+- une interface web publique permettant des recherches sur les produits et les stocks ;
+- un AI Query Service, ajouté en phase finale, qui répond aux questions en langage naturel à l'aide des outils MCP et des données de stock.
 
-Les agents IA et l'AI Query Service sont exclus de l'implémentation. Les recherches publiques reposent sur des paramètres REST explicites et des résultats structurés, et non sur des réponses générées par une IA.
+L'AI Query Service est livré en phase finale, une fois la base déterministe stabilisée — il est reporté, non abandonné. Jusque-là, les recherches publiques reposent sur des paramètres REST explicites et des résultats structurés ; une fois la couche IA en place, l'interface web publique envoie les questions en langage naturel à l'AI Query Service, qui répond à l'aide des mêmes outils MCP et données de stock.
 
 ## 2. Composants et responsabilités
 
@@ -57,7 +58,7 @@ Le serveur MCP Produit est un service indépendant servant d'intermédiaire avec
 - `list_products` : renvoie les produits disponibles avec leurs identifiants et un résumé utile ;
 - `get_product_details` : renvoie un produit à partir de son identifiant numérique ou de son SKU.
 
-Il ne contient aucune IA. Le service web public appelle ces outils au moyen de MCP sur HTTP Streamable. Le serveur MCP ne modifie jamais les produits et n'enregistre pas leurs métadonnées.
+Le serveur MCP est lui-même un simple pont et ne contient aucun agent IA. Ses outils sont appelés via MCP sur HTTP Streamable — par le service web public pendant la phase de base, puis par l'AI Query Service une fois la phase finale livrée. Le serveur MCP ne modifie jamais les produits et n'enregistre pas leurs métadonnées.
 
 ### Service client public et interface web
 
@@ -72,6 +73,20 @@ Le composant `client_web` fournit une page de recherche anonyme et un petit back
 - traite chaque requête indépendamment et ne conserve aucun historique.
 
 Le service public ne peut ni créer des utilisateurs ni modifier les stocks.
+
+### AI Query Service (phase finale)
+
+L'AI Query Service est un backend indépendant, distinct du Backoffice, ajouté une fois la base déterministe (phases 1 à 6) stabilisée. Il :
+
+- reçoit une question en langage naturel depuis l'interface web publique via REST ;
+- utilise un ou plusieurs agents IA pour élaborer une réponse ;
+- obtient les données produit au moyen des outils du serveur MCP Produit ;
+- obtient les stocks via un accès contrôlé en lecture seule ;
+- ne renvoie que des réponses fondées sur les données, et indique clairement lorsqu'une information est indisponible ;
+- n'invente aucun nom de produit, détail, quantité de stock ou disponibilité en agence ;
+- traite chaque requête indépendamment et ne conserve aucun historique de conversation.
+
+Dans cet état final, l'interface web publique appelle l'AI Query Service plutôt que le serveur MCP directement.
 
 ## 3. Circulation des données
 
@@ -107,7 +122,16 @@ Le service public ne peut ni créer des utilisateurs ni modifier les stocks.
 3. Le serveur MCP appelle l'API Produit externe en lecture seule.
 4. Lorsqu'une information de stock est nécessaire, le service client public effectue une requête contrôlée et en lecture seule dans la base.
 5. Le service combine les résultats et renvoie des données structurées à la page.
-6. Aucune réponse générée par une IA et aucun historique n'interviennent.
+6. Aucun historique n'est conservé. Ce flux déterministe constitue la base ; le flux de requête IA ci-dessous est ajouté en phase finale.
+
+### Requête IA (phase finale)
+
+1. Un visiteur anonyme envoie une question en langage naturel via REST.
+2. L'interface web publique transmet la question à l'AI Query Service.
+3. Un agent IA obtient les données produit via le serveur MCP Produit et les stocks via un accès contrôlé en lecture seule.
+4. L'agent compose une réponse fondée uniquement sur les données récupérées.
+5. Si les outils ne renvoient rien, le service indique que l'information est indisponible.
+6. Chaque requête est indépendante et aucun historique n'est conservé.
 
 ## 4. Règles de sécurité et d'intégrité
 
