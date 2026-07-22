@@ -2,7 +2,7 @@
 
 ## MVP Goal
 
-Deliver a secure inventory Backoffice plus an anonymous, deterministic product-and-stock search interface. Product details come from the supplied API through the appropriate integration path; stock remains in PostgreSQL. AI (Phase 7) is a stretch goal attempted only if time remains after the mandatory scope.
+Deliver a secure inventory Backoffice plus an anonymous, deterministic product-and-stock search interface. Product details come from the supplied API through the appropriate integration path; stock remains in PostgreSQL. The AI Query Service is scheduled as the final phase and built last, once the deterministic foundation is stable — it is deferred, not dropped.
 
 ## Phase 1 — Database and Backoffice Foundation
 
@@ -63,7 +63,7 @@ Common users can, only for their assigned branch:
 - Product data obtained through MCP tools.
 - Stock obtained through controlled, read-only database queries.
 - Independent requests with no saved history.
-- No AI-generated answers.
+- Deterministic answers first; AI-generated answers are added in Phase 7.
 
 ## Phase 6 — Integration and QA
 
@@ -73,15 +73,17 @@ Common users can, only for their assigned branch:
 - Manual QA checklist.
 - Documented startup and testing commands.
 
-## Phase 7 — Optional AI Layer (Time Permitting)
-
-Attempted only after Phases 1-6 are complete and tested.
+## Phase 7 — AI Query Service (final phase)
 
 - Independent AI Query Service, separate from the Backoffice.
-- One or more AI agents connected to the Product MCP Server for product data.
-- Controlled agent access to stock data (extended MCP tools or an internal read-only API).
-- Natural-language question endpoint (REST or WebSocket) consumed by the Client Web Interface as an additional entry point alongside the deterministic search.
-- Grounded responses only: the agent must not invent product, stock or branch data, and must state clearly when information is unavailable.
+- One or more AI agents connected to the Product MCP Server tools.
+- Controlled, read-only access to stock (through the MCP server or a narrow internal API).
+- Grounded answers only: no invented product names, details, stock or branch availability.
+- Clear "information unavailable" responses when tools return nothing.
+- A REST query endpoint the Client Web Interface calls with a single question.
+- Supported question types documented (product details, product availability across branches, products in a branch, shopping-list branch recommendation).
+
+This phase is built last, after Phases 1–6 are stable.
 
 ## Optional Features Only If Time Remains
 
@@ -93,7 +95,7 @@ Attempted only after Phases 1-6 are complete and tested.
 
 ## Explicitly Outside the MVP
 
-- WebSockets and streamed responses for the deterministic client.
+- WebSockets and streamed responses.
 - Conversation history.
 - Multiple administrators.
 - Branch CRUD screens.
@@ -116,4 +118,5 @@ Attempted only after Phases 1-6 are complete and tested.
 - MCP tools list products and return product details.
 - The anonymous public client uses REST and cannot change data.
 - Product API failures produce clear errors.
+- The AI Query Service (final phase) answers supported product and stock questions from real data and clearly states when information is unavailable.
 - Mandatory flows pass automated tests and the manual QA checklist.
