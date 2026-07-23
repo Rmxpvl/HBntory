@@ -2,10 +2,11 @@
 
 ## MVP Goal
 
-Deliver a secure inventory Backoffice plus an anonymous, deterministic product-and-stock search interface. Product details come from the supplied API through the appropriate integration path; stock remains in PostgreSQL. The AI Query Service is scheduled as the final phase and built last, once the deterministic foundation is stable — it is deferred, not dropped.
+Deliver a secure inventory Backoffice plus an anonymous, deterministic product-and-stock search interface, both reached through a single API Gateway entry point. Product details come from the supplied API through the appropriate integration path; stock remains in PostgreSQL. The AI Query Service is scheduled as the final phase and built last, once the deterministic foundation is stable — it is deferred, not dropped.
 
-## Phase 1 — Database and Backoffice Foundation
+## Phase 1 — Database, Backoffice and API Gateway Foundation
 
+- API Gateway as the single HTTP entry point, routing requests to the Backoffice by path and forwarding headers/cookies unchanged (no authentication or business logic in the Gateway).
 - PostgreSQL configuration.
 - SQLAlchemy models for users, branches and stock.
 - Alembic initial migration.
@@ -56,6 +57,7 @@ Common users can, only for their assigned branch:
 ## Phase 5 — Public Client Web Interface
 
 - Anonymous page in `client_web/`.
+- Reached through the API Gateway, same as the Backoffice.
 - Search-box interface using REST rather than WebSockets.
 - Product catalogue search and product-detail display.
 - Branch availability and quantity display.
@@ -106,6 +108,7 @@ This phase is built last, after Phases 1–6 are stable.
 ## Acceptance Criteria
 
 - The project starts from documented commands on a clean machine.
+- The API Gateway routes every request to the Backoffice or the Client Web Interface and returns a clear HTTP error (`404`/`502`/`503`/`504`) when a downstream service cannot answer.
 - Exactly one active administrator named `admin` exists.
 - Passwords are stored only as Argon2id hashes.
 - A common user always has exactly one branch.

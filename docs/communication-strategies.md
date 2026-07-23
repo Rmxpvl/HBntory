@@ -4,6 +4,9 @@
 
 | Communication | Selected Option |
 | --- | --- |
+| Browser (public or internal) → API Gateway | REST, single HTTP entry point |
+| API Gateway → Backoffice | REST, path-based routing, headers/cookies forwarded unchanged |
+| API Gateway → Client Service | REST, path-based routing, headers/cookies forwarded unchanged |
 | Internal browser → Backoffice | REST with HTML, CSS and JavaScript |
 | Backoffice → PostgreSQL | SQLAlchemy |
 | Backoffice → Product API | Read-only REST |
@@ -14,6 +17,14 @@
 | Public browser → AI Query Service (final phase) | REST |
 | AI Query Service → Product MCP Server (final phase) | MCP over Streamable HTTP |
 | AI Query Service → stock database (final phase) | Controlled, read-only SQLAlchemy queries |
+
+## API Gateway: Single Entry Point, Routing Only
+
+**Selected option:** A single API Gateway receives every request — public or internal — over REST and routes it by path to the Backoffice or the Client Service, forwarding headers and the session cookie unchanged. It maps downstream failures to `404 Not Found` (unknown route), `502 Bad Gateway` (invalid or unexpected upstream response), `503 Service Unavailable` (downstream service down) or `504 Gateway Timeout` (downstream service too slow).
+
+**Main benefit:** One documented entry point for all traffic, with centralised timeout and error handling, while the Backoffice keeps its existing authentication and authorisation logic unchanged.
+
+**Trade-off:** Adds one network hop and one more point of failure to every request; the Gateway must forward auth headers and cookies faithfully, since it has no authentication or authorisation logic of its own.
 
 ## Backoffice: REST with HTML, CSS and JavaScript
 
