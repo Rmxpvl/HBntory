@@ -4,6 +4,7 @@
 
 HBntory is an inventory platform for a company with several physical branches. The implementation is delivered in two stages — a deterministic foundation first, then an AI layer. It contains:
 
+- a single HTTP entry point through the API Gateway. The browser reaches it the same way for a public account or an admin/employee account; the Gateway then routes the request to the Backoffice or the Client Web Interface without applying any authorisation itself. Authorisation stays determined by the Backoffice;
 - an authenticated Backoffice for internal users;
 - PostgreSQL for users, branches and stock;
 - the supplied read-only Product API;
@@ -14,6 +15,24 @@ HBntory is an inventory platform for a company with several physical branches. T
 The AI Query Service is delivered in the final phase, after the deterministic foundation is stable — it is deferred, not dropped. Until then, public searches use explicit REST parameters and structured results; once the AI layer lands, the Client Web Interface sends natural-language questions to the AI Query Service, which answers using the same MCP tools and stock data.
 
 ## 2. Components and Responsibilities
+
+### API Gateway
+
+The API Gateway is the single HTTP entry point of the application, placed in front of the Backoffice and the Client Web Interface. It:
+
+- receives client requests and forwards them to the requested service;
+- handles connection failures such as timeouts;
+- returns an appropriate HTTP error when a request cannot succeed: `404 Not Found` when the requested route does not exist, `502 Bad Gateway` when the downstream response is invalid or unexpected, `503 Service Unavailable` when the downstream service is down, `504 Gateway Timeout` when the downstream service does not respond in time;
+- forwards HTTP headers and the session cookie to the target service unchanged — the Backoffice's existing authentication mechanism is untouched.
+
+The API Gateway has no decision-making power: it routes, it does not decide. It:
+
+- does not handle user authentication;
+- does not read session cookies;
+- does not validate roles or permissions;
+- does not modify forwarded identity information;
+- has no knowledge of branches or business rules;
+- performs no direct operation on the database.
 
 ### Backoffice Service
 
@@ -92,14 +111,14 @@ In this end state the Client Web Interface calls the AI Query Service rather tha
 
 ### Backoffice Authentication
 
-1. A user submits credentials to the Backoffice.
+1. The user submits credentials to the API Gateway, which routes them to the Backoffice without reading them.
 2. The Backoffice retrieves the active user and verifies the password against its Argon2id hash.
 3. Successful authentication creates a signed, HTTP-only session cookie.
-4. Every protected request reloads the user and checks role, active status and branch assignment.
+4. Every protected request passes through the API Gateway again, unchanged; the Backoffice checks role, active status and branch assignment.
 
 ### Backoffice Stock Consultation
 
-1. A common user requests their stock.
+1. A common user requests their stock through the API Gateway, which routes the request to the Backoffice.
 2. The backend obtains the branch from the authenticated account.
 3. SQLAlchemy retrieves local product IDs and quantities.
 4. The Backoffice retrieves corresponding product details from the Product API.
@@ -107,17 +126,18 @@ In this end state the Client Web Interface calls the AI Query Service rather tha
 
 ### Backoffice Stock Change
 
-1. The backend verifies that the user is an active common user.
-2. It derives the user's branch from the authenticated account.
-3. It accepts only a positive integer quantity.
-4. It validates the product through the Product API.
-5. It changes stock inside a database transaction.
-6. Removal fails when the available quantity is insufficient.
-7. A database constraint guarantees that quantity cannot become negative.
+1. The request passes through the API Gateway, which routes it to the Backoffice.
+2. The backend verifies that the user is an active common user.
+3. It derives the user's branch from the authenticated account.
+4. It accepts only a positive integer quantity.
+5. It validates the product through the Product API.
+6. It changes stock inside a database transaction.
+7. Removal fails when the available quantity is insufficient.
+8. A database constraint guarantees that quantity cannot become negative.
 
 ### Public Product and Stock Search
 
-1. An anonymous visitor submits a product or branch search through REST.
+1. An anonymous visitor submits a product or branch search through REST to the API Gateway, which routes the request to the Client Web Interface.
 2. The Public Client Service calls the Product MCP Server for product information.
 3. The MCP server calls the external Product API through read-only REST.
 4. When stock is needed, the Public Client Service performs a controlled read-only database query.

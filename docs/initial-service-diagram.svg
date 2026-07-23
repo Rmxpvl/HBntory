@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="900" viewBox="0 0 1240 900" role="img" aria-labelledby="title description">
   <title id="title">HBntory service architecture</title>
-  <desc id="description">Backoffice and public client architecture over PostgreSQL, the Product MCP Server and the External Product API. The AI Query Service is added as the final phase, shown with dashed connections, and reuses the same MCP tools and read-only stock access.</desc>
+  <desc id="description">A single API Gateway routes both internal and public browser traffic to the Backoffice or the Public Client Service, over PostgreSQL, the Product MCP Server and the External Product API. The AI Query Service is added as the final phase, shown with dashed connections, and reuses the same MCP tools and read-only stock access.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L0,6 L9,3 z" fill="#334155"/>
@@ -27,7 +27,7 @@
 
   <rect width="1240" height="900" fill="#f8fafc"/>
   <text x="60" y="52" class="title">HBntory — Service Architecture</text>
-  <text x="60" y="80" class="subtitle">Foundation first: Backoffice, public client, Product MCP Server, PostgreSQL and Product API.</text>
+  <text x="60" y="80" class="subtitle">Foundation first: API Gateway, Backoffice, public client, Product MCP Server, PostgreSQL and Product API.</text>
 
   <line x1="795" y1="46" x2="841" y2="46" class="edge-ai"/>
   <text x="849" y="51" class="legend">final phase — AI Query Service (deferred, not excluded)</text>
@@ -49,10 +49,15 @@
   <text x="926" y="222" class="box-text">Users, branches and stock</text>
   <text x="926" y="247" class="box-text">External product IDs only</text>
 
-  <path d="M300 218 H440" class="edge"/>
-  <text x="315" y="205" class="edge-label">REST + session</text>
+  <path d="M300 218 L350 300" class="edge"/>
+  <path d="M530 300 L440 218" class="edge"/>
   <path d="M740 218 H900" class="edge"/>
   <text x="768" y="205" class="edge-label">SQLAlchemy</text>
+
+  <rect x="350" y="285" width="180" height="90" rx="14" fill="#f1f5f9" stroke="#334155" stroke-width="2"/>
+  <text x="368" y="317" class="box-title">API Gateway</text>
+  <text x="368" y="340" class="box-text">Single entry point</text>
+  <text x="368" y="358" class="box-text">Routes only, no auth</text>
 
   <text x="60" y="353" class="section">PUBLIC PRODUCT AND AVAILABILITY FLOW</text>
 
@@ -71,8 +76,8 @@
   <text x="926" y="452" class="box-text">list_products</text>
   <text x="926" y="477" class="box-text">get_product_details</text>
 
-  <path d="M300 447 H440" class="edge"/>
-  <text x="345" y="434" class="edge-label">REST</text>
+  <path d="M300 447 L350 360" class="edge"/>
+  <path d="M530 360 L440 447" class="edge"/>
   <path d="M740 447 H900" class="edge"/>
   <text x="772" y="434" class="edge-label">MCP HTTP</text>
 
