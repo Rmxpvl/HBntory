@@ -4,6 +4,7 @@
 
 HBntory est une plateforme de gestion des stocks destinée à une entreprise possédant plusieurs agences. L'implémentation est livrée en deux temps — d'abord une base déterministe, puis une couche IA. Elle comprend :
 
+- un point d'entrée HTTP unique via l'API Gateway. Le navigateur y accède de la même manière, que ce soit un compte public ou un compte admin/employé ; le Gateway route ensuite la requête vers le Backoffice ou le Client Web, sans appliquer lui-même d'autorisation. Les autorisations restent déterminées par le Backoffice ;
 - un Backoffice authentifié destiné aux utilisateurs internes ;
 - PostgreSQL pour les utilisateurs, les agences et les stocks ;
 - l'API Produit externe fournie en lecture seule ;
@@ -14,6 +15,24 @@ HBntory est une plateforme de gestion des stocks destinée à une entreprise pos
 L'AI Query Service est livré en phase finale, une fois la base déterministe stabilisée — il est reporté, non abandonné. Jusque-là, les recherches publiques reposent sur des paramètres REST explicites et des résultats structurés ; une fois la couche IA en place, l'interface web publique envoie les questions en langage naturel à l'AI Query Service, qui répond à l'aide des mêmes outils MCP et données de stock.
 
 ## 2. Composants et responsabilités
+
+### API Gateway
+
+L'API Gateway est le point d'entrée HTTP unique de l'application, placé devant le Backoffice et le Client Web. Il :
+
+- reçoit les requêtes des clients et les envoie vers le service demandé ;
+- gère les problèmes de connexion (timeout) ;
+- renvoie une erreur HTTP adaptée lorsqu'une requête ne peut pas aboutir : `404 Not Found` si la route demandée n'existe pas, `502 Bad Gateway` si la réponse reçue du service en aval est invalide ou inattendue, `503 Service Unavailable` si le service en aval est indisponible, `504 Gateway Timeout` si le service ne répond pas dans le délai prévu ;
+- transmet les en-têtes HTTP et le cookie de session au service cible sans les lire, les modifier ou les supprimer — le mécanisme d'authentification existant du Backoffice reste inchangé.
+
+L'API Gateway n'a aucun pouvoir de décision : il route, il ne décide pas. Il :
+
+- ne gère pas l'authentification des utilisateurs ;
+- ne lit pas les cookies de session ;
+- ne valide pas les rôles ou les permissions ;
+- ne modifie pas les informations d'identification transmises ;
+- ne connaît pas les agences ni les règles métier ;
+- n'effectue aucune opération directe sur la base de données.
 
 ### Service Backoffice
 
@@ -92,14 +111,14 @@ Dans cet état final, l'interface web publique appelle l'AI Query Service plutô
 
 ### Authentification du Backoffice
 
-1. L'utilisateur transmet ses identifiants au Backoffice.
+1. L'utilisateur transmet ses identifiants à l'API Gateway, qui les route vers le Backoffice sans les lire.
 2. Le Backoffice récupère le compte actif et vérifie le mot de passe à partir de son empreinte Argon2id.
 3. Une authentification réussie crée un cookie de session signé et inaccessible à JavaScript.
-4. Chaque requête protégée vérifie de nouveau le rôle, l'état du compte et l'agence.
+4. Chaque requête protégée transite de nouveau par l'API Gateway, qui la transmet telle quelle ; le Backoffice vérifie le rôle, l'état du compte et l'agence.
 
 ### Consultation des stocks dans le Backoffice
 
-1. L'utilisateur commun demande à consulter son stock.
+1. L'utilisateur commun demande à consulter son stock via l'API Gateway, qui route la requête vers le Backoffice.
 2. Le serveur déduit son agence du compte authentifié.
 3. SQLAlchemy récupère les identifiants produit et les quantités enregistrées localement.
 4. Le Backoffice demande les informations correspondantes à l'API Produit.
@@ -107,17 +126,18 @@ Dans cet état final, l'interface web publique appelle l'AI Query Service plutô
 
 ### Modification des stocks
 
-1. Le serveur vérifie qu'il s'agit d'un utilisateur commun actif.
-2. Il déduit l'agence du compte authentifié.
-3. Il n'accepte qu'une quantité entière strictement positive.
-4. Il valide le produit auprès de l'API externe.
-5. Il modifie le stock dans une transaction.
-6. Un retrait est refusé si la quantité disponible est insuffisante.
-7. Une contrainte de base de données garantit que la quantité ne devient jamais négative.
+1. La requête transite par l'API Gateway, qui la route vers le Backoffice.
+2. Le serveur vérifie qu'il s'agit d'un utilisateur commun actif.
+3. Il déduit l'agence du compte authentifié.
+4. Il n'accepte qu'une quantité entière strictement positive.
+5. Il valide le produit auprès de l'API externe.
+6. Il modifie le stock dans une transaction.
+7. Un retrait est refusé si la quantité disponible est insuffisante.
+8. Une contrainte de base de données garantit que la quantité ne devient jamais négative.
 
 ### Recherche publique de produits et de stocks
 
-1. Un visiteur anonyme lance une recherche de produit ou d'agence par REST.
+1. Un visiteur anonyme lance une recherche de produit ou d'agence par REST vers l'API Gateway, qui route la requête vers le Client Web.
 2. Le service client public appelle le serveur MCP Produit pour obtenir les informations produit.
 3. Le serveur MCP appelle l'API Produit externe en lecture seule.
 4. Lorsqu'une information de stock est nécessaire, le service client public effectue une requête contrôlée et en lecture seule dans la base.

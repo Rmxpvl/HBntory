@@ -6,6 +6,10 @@
 
 | Source | Destination | Communication |
 | --- | --- | --- |
+| Internal browser | API Gateway | REST, single HTTP entry point |
+| Public browser | API Gateway | REST, single HTTP entry point |
+| API Gateway | Backoffice Service | REST, path-based routing, headers/cookies forwarded unchanged |
+| API Gateway | Public Client Service | REST, path-based routing, headers/cookies forwarded unchanged |
 | Internal browser | Backoffice Service | REST with signed session cookie |
 | Backoffice Service | PostgreSQL | SQLAlchemy |
 | Backoffice Service | External Product API | Read-only REST |
@@ -17,4 +21,4 @@
 | AI Query Service | Product MCP Server (final phase) | MCP over Streamable HTTP |
 | AI Query Service | PostgreSQL (final phase) | Controlled, read-only SQLAlchemy queries |
 
-The Product API is the authority for product information. PostgreSQL stores users, branches, external product IDs and stock quantities. The Product MCP Server and public Client Web Interface are part of the foundation. The AI agents and AI Query Service are planned as the final phase, built last once the foundation is stable — deferred, not excluded. When that phase lands, the Client Web Interface sends questions to the AI Query Service, which reaches product data through the MCP server and stock through controlled, read-only queries.
+The API Gateway is the single HTTP entry point for both internal and public traffic. It only routes requests by path and forwards headers and the session cookie unchanged; it has no authentication, authorisation or business logic of its own — that stays in the Backoffice. The Product API is the authority for product information. PostgreSQL stores users, branches, external product IDs and stock quantities. The Product MCP Server and public Client Web Interface are part of the foundation. The AI agents and AI Query Service are planned as the final phase, built last once the foundation is stable — deferred, not excluded. When that phase lands, the Client Web Interface sends questions to the AI Query Service, which reaches product data through the MCP server and stock through controlled, read-only queries.
