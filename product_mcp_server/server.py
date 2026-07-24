@@ -65,3 +65,7 @@ def list_products() -> dict:
         "count": len(all_products),
         "products": all_products,
     }
+
+
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
