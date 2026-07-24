@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Connexion au Backoffice HBntory"
+    >
+
+    <title>Connexion | HBntory</title>
+
+    <link rel="stylesheet" href="./css/variables.css">
+    <link rel="stylesheet" href="./css/base.css">
+    <link rel="stylesheet" href="./css/components.css">
+    <link rel="stylesheet" href="./css/login.css">
+
+    <script type="module" src="./js/login.js" defer></script>
+</head>
+
+<body class="login-page">
+
+    <!-- En-tête de la page -->
+    <header class="login-header">
+        <a
+            class="login-header__brand"
+            href="./login.html"
+            aria-label="Accueil HBntory"
+        >
+            <span class="login-header__logo" aria-hidden="true">
+                HB
+            </span>
+
+            <span class="login-header__name">
+                HBntory
+            </span>
+        </a>
+    </header>
+
+    <!-- Contenu principal -->
+    <main class="login-main">
+
+        <section
+            class="login-card"
+            aria-labelledby="login-title"
+        >
+            <!-- Présentation du formulaire -->
+            <header class="login-card__header">
+                <p class="login-card__eyebrow">
+                    Backoffice
+                </p>
+
+                <h1 id="login-title" class="login-card__title">
+                    Connexion
+                </h1>
+
+                <p class="login-card__description">
+                    Connectez-vous pour accéder à votre espace de gestion.
+                </p>
+            </header>
+
+            <!-- Formulaire de connexion -->
+            <form
+                id="login-form"
+                class="login-form"
+                method="post"
+            >
+                <!-- Message d’erreur général -->
+                <div
+                    id="login-error"
+                    class="alert alert--error"
+                    role="alert"
+                    aria-live="assertive"
+                    hidden
+                >
+                    <p id="login-error-message">
+                        Identifiants incorrects ou compte indisponible.
+                    </p>
+                </div>
+
+                <!-- Champ identifiant -->
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="username"
+                    >
+                        Identifiant
+                    </label>
+
+                    <input
+                        id="username"
+                        class="form-field__input"
+                        name="username"
+                        type="text"
+                        autocomplete="username"
+                        placeholder="Saisissez votre identifiant"
+                        minlength="3"
+                        maxlength="50"
+                        required
+                        autofocus
+                        aria-describedby="username-help username-error"
+                    >
+                    <p
+                        id="username-error"
+                        class="form-field__error"
+                        aria-live="polite"
+                        hidden
+                    >
+                        Veuillez saisir votre identifiant.
+                    </p>
+                </div>
+
+                <!-- Champ mot de passe -->
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="password"
+                    >
+                        Mot de passe
+                    </label>
+
+                    <div class="password-field">
+                        <input
+                            id="password"
+                            class="form-field__input password-field__input"
+                            name="password"
+                            type="password"
+                            autocomplete="current-password"
+                            placeholder="Saisissez votre mot de passe"
+                            required
+                            aria-describedby="password-error"
+                        >
+
+                        <button
+                            id="password-toggle"
+                            class="password-field__toggle"
+                            type="button"
+                            aria-label="Afficher le mot de passe"
+                            aria-controls="password"
+                            aria-pressed="false"
+                        >
+                            <span
+                                class="password-field__toggle-text"
+                                aria-hidden="true"
+                            >
+                                Afficher
+                            </span>
+                        </button>
+                    </div>
+
+                    <p
+                        id="password-error"
+                        class="form-field__error"
+                        aria-live="polite"
+                        hidden
+                    >
+                        Veuillez saisir votre mot de passe.
+                    </p>
+                </div>
+
+                <!-- Bouton de connexion -->
+                <button
+                    id="login-submit"
+                    class="button button--primary button--full"
+                    type="submit"
+                >
+                    <span class="button__label">
+                        Se connecter
+                    </span>
+                </button>
+
+                <!-- Indicateur de chargement -->
+                <div
+                    id="login-loading"
+                    class="loading-message"
+                    role="status"
+                    aria-live="polite"
+                    hidden
+                >
+                    <span
+                        class="loading-message__spinner"
+                        aria-hidden="true"
+                    ></span>
+
+                    <span class="loading-message__text">
+                        Connexion en cours…
+                    </span>
+                </div>
+            </form>
+
+            <!-- Information complémentaire -->
+            <aside class="login-card__information">
+                <p>
+                    Cet espace est réservé aux utilisateurs internes autorisés.
+                </p>
+            </aside>
+        </section>
+
+    </main>
+
+    <!-- Pied de page -->
+    <footer class="login-footer">
+        <p>
+            HBntory — Système de gestion des stocks
+        </p>
+    </footer>
+
+</body>
+</html>
