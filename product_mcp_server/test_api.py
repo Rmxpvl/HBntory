@@ -1,10 +1,17 @@
 import httpx
 
-with httpx.Client(timeout=10.0) as client:
-    response = client.get("http://localhost:5001/api/v1/products")
-    data = response.json()
+url = "http://localhost:5001/api/v1/products"
+all_products = []
+offset = 0
 
-print(data["count"], "products in total")
-print(len(data["results"]), "in this page")
-print(data["results"][0]["name"])
+with httpx.Client(timeout=10.0) as client:
+    while True:
+        response = client.get(url, params={"offset": offset})
+        data = response.json()
+        all_products.extend(data["results"])
+        if len(all_products) >= data["count"]:
+            break
+        offset += data["limit"]
+
+print(len(all_products))
 
