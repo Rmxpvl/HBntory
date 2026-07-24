@@ -46,21 +46,30 @@ def list_products() -> dict:
     url = f"{PRODUCT_API_BASE_URL}/api/v1/products"
     all_products = []
     offset = 0
+    try:
+        with httpx.Client(timeout=REQUEST_TIMEOUT) as client:
+            while True:
+                response = client.get(url, params={"offset": offset})
+                response.raise_for_status()
+                data = response.json()
 
-    with httpx.Client(timeout=REQUEST_TIMEOUT) as client:
-        while True:
-            response = client.get(url, params={"offset": offset})
-            response.raise_for_status()
-            data = response.json()
+                for product in data["results"]:
+                    all_products.append(_summarize(product))
 
-            for product in data["results"]:
-                all_products.append(_summarize(product))
+                if len(all_products) >= data["count"]:
+                    break
 
-            if len(all_products) >= data["count"]:
-                break
-
-            offset += data["limit"]
-
+                offset += data["limit"]
+    except httpx.TimeoutException:
+        return {"error": "product_api_timeout",
+        "message": "The Product API did not respond in time."}
+    except httpx.RequestError:
+        return {"error": "product_api_unreachable",
+        "message": "Could not reach the Product API."}
+    except httpx.HTTPStatusError as exc:
+        return {"error": "product_api_error",
+        "message": "The Product API returned an error.",
+        "status_code": exc.response.status_code}
     return {
         "count": len(all_products),
         "products": all_products,
