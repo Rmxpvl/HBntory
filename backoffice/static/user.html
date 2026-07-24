@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Administration des utilisateurs HBntory"
+    >
+
+    <title>Administration des utilisateurs | HBntory</title>
+
+    <link rel="stylesheet" href="./css/variables.css">
+    <link rel="stylesheet" href="./css/base.css">
+    <link rel="stylesheet" href="./css/components.css">
+    <link rel="stylesheet" href="./css/users.css">
+
+    <script type="module" src="./js/users.js" defer></script>
+</head>
+
+<body>
+
+    <header class="app-header">
+        <a
+            class="app-header__brand"
+            href="./users.html"
+            aria-label="Accueil de l’administration HBntory"
+        >
+            <span class="app-header__logo" aria-hidden="true">
+                HB
+            </span>
+
+            <span class="app-header__name">
+                HBntory
+            </span>
+        </a>
+
+        <div class="app-header__user">
+            <div class="user-summary">
+                <span
+                    id="current-username"
+                    class="user-summary__name"
+                >
+                    Chargement…
+                </span>
+
+                <span class="user-summary__role">
+                    Administrateur
+                </span>
+            </div>
+
+            <button
+                id="logout-button"
+                class="button button--secondary"
+                type="button"
+            >
+                Se déconnecter
+            </button>
+        </div>
+    </header>
+
+    <main class="app-main">
+
+        <section
+            class="page-header"
+            aria-labelledby="users-page-title"
+        >
+            <div>
+                <p class="page-header__eyebrow">
+                    Administration
+                </p>
+
+                <h1 id="users-page-title">
+                    Gestion des utilisateurs
+                </h1>
+
+                <p class="page-header__description">
+                    Créez, modifiez, réaffectez ou désactivez les
+                    utilisateurs communs.
+                </p>
+            </div>
+
+            <button
+                id="open-create-user-dialog"
+                class="button button--primary"
+                type="button"
+            >
+                Créer un utilisateur
+            </button>
+        </section>
+
+        <section
+            class="users-section"
+            aria-labelledby="users-list-title"
+        >
+            <header class="section-header">
+                <div>
+                    <h2 id="users-list-title">
+                        Liste des utilisateurs
+                    </h2>
+                </div>
+            </header>
+
+            <!-- Filtres -->
+            <form
+                id="users-filter-form"
+                class="filters"
+                role="search"
+            >
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="users-search"
+                    >
+                        Rechercher
+                    </label>
+
+                    <input
+                        id="users-search"
+                        class="form-field__input"
+                        name="search"
+                        type="search"
+                        placeholder="Nom d’utilisateur"
+                    >
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="branch-filter"
+                    >
+                        Magasin
+                    </label>
+
+                    <select
+                        id="branch-filter"
+                        class="form-field__select"
+                        name="branch_id"
+                    >
+                        <option value="">
+                            Tous les magasins
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="status-filter"
+                    >
+                        Statut
+                    </label>
+
+                    <select
+                        id="status-filter"
+                        class="form-field__select"
+                        name="status"
+                    >
+                        <option value="">
+                            Tous les statuts
+                        </option>
+
+                        <option value="active">
+                            Actifs
+                        </option>
+
+                        <option value="deleted">
+                            Désactivés
+                        </option>
+                    </select>
+                </div>
+
+                <button
+                    class="button button--secondary"
+                    type="submit"
+                >
+                    Filtrer
+                </button>
+
+                <button
+                    id="reset-users-filters"
+                    class="button button--text"
+                    type="button"
+                >
+                    Réinitialiser
+                </button>
+            </form>
+
+            <!-- Erreur -->
+            <div
+                id="users-error"
+                class="alert alert--error"
+                role="alert"
+                aria-live="assertive"
+                hidden
+            >
+                <p id="users-error-message">
+                    Impossible de charger les utilisateurs.
+                </p>
+
+                <button
+                    id="retry-users-loading"
+                    class="button button--secondary"
+                    type="button"
+                >
+                    Réessayer
+                </button>
+            </div>
+
+            <!-- Chargement -->
+            <div
+                id="users-loading"
+                class="loading-message"
+                role="status"
+                aria-live="polite"
+            >
+                Chargement des utilisateurs…
+            </div>
+
+            <!-- État vide -->
+            <div
+                id="users-empty"
+                class="empty-state"
+                hidden
+            >
+                <h3>Aucun utilisateur trouvé</h3>
+
+                <p>
+                    Modifiez les filtres ou créez un utilisateur.
+                </p>
+            </div>
+
+            <!-- Tableau -->
+            <div
+                id="users-table-container"
+                class="table-container"
+                hidden
+            >
+                <table class="data-table">
+                    <caption class="sr-only">
+                        Liste des utilisateurs du Backoffice
+                    </caption>
+
+                    <thead>
+                        <tr>
+                            <th scope="col">
+                                Utilisateur
+                            </th>
+
+                            <th scope="col">
+                                Rôle
+                            </th>
+
+                            <th scope="col">
+                                Branche
+                            </th>
+
+                            <th scope="col">
+                                Statut
+                            </th>
+
+                            <th scope="col">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="users-table-body">
+                        <!-- Lignes créées par users.js -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <div
+            id="users-notification"
+            class="toast"
+            role="status"
+            aria-live="polite"
+            hidden
+        >
+            <p id="users-notification-message"></p>
+        </div>
+
+    </main>
+
+    <!-- Création d’un utilisateur -->
+    <dialog
+        id="create-user-dialog"
+        class="modal"
+        aria-labelledby="create-user-title"
+    >
+        <div class="modal__content">
+            <header class="modal__header">
+                <h2 id="create-user-title">
+                    Créer un utilisateur
+                </h2>
+
+                <button
+                    class="modal__close"
+                    type="button"
+                    data-close-dialog="create-user-dialog"
+                    aria-label="Fermer la fenêtre"
+                >
+                    ×
+                </button>
+            </header>
+
+            <form id="create-user-form" class="modal__form">
+
+                <div
+                    id="create-user-error"
+                    class="alert alert--error"
+                    role="alert"
+                    aria-live="assertive"
+                    hidden
+                >
+                    <p id="create-user-error-message"></p>
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="create-username"
+                    >
+                        Identifiant
+                    </label>
+
+                    <input
+                        id="create-username"
+                        class="form-field__input"
+                        name="username"
+                        type="text"
+                        minlength="3"
+                        maxlength="50"
+                        autocomplete="off"
+                        required
+                    >
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="create-branch-id"
+                    >
+                        Branche d’affectation
+                    </label>
+
+                    <select
+                        id="create-branch-id"
+                        class="form-field__select"
+                        name="branch_id"
+                        required
+                    >
+                        <option value="">
+                            Sélectionnez une branche
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-field">
+                    <span class="form-field__label">
+                        Rôle
+                    </span>
+
+                    <p class="readonly-field">
+                        Utilisateur commun
+                    </p>
+
+                    <p class="form-field__help">
+                        La création d’un autre administrateur n’est pas autorisée.
+                    </p>
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="create-password"
+                    >
+                        Mot de passe
+                    </label>
+
+                    <input
+                        id="create-password"
+                        class="form-field__input"
+                        name="password"
+                        type="password"
+                        autocomplete="new-password"
+                        required
+                    >
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="create-password-confirmation"
+                    >
+                        Confirmer le mot de passe
+                    </label>
+
+                    <input
+                        id="create-password-confirmation"
+                        class="form-field__input"
+                        name="password_confirmation"
+                        type="password"
+                        autocomplete="new-password"
+                        required
+                    >
+                </div>
+
+                <footer class="modal__footer">
+                    <button
+                        class="button button--secondary"
+                        type="button"
+                        data-close-dialog="create-user-dialog"
+                    >
+                        Annuler
+                    </button>
+
+                    <button
+                        id="create-user-submit"
+                        class="button button--primary"
+                        type="submit"
+                    >
+                        Créer l’utilisateur
+                    </button>
+                </footer>
+
+                <div
+                    id="create-user-loading"
+                    class="loading-message"
+                    role="status"
+                    aria-live="polite"
+                    hidden
+                >
+                    Création de l’utilisateur…
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <!-- Modification d’un utilisateur -->
+    <dialog
+        id="edit-user-dialog"
+        class="modal"
+        aria-labelledby="edit-user-title"
+    >
+        <div class="modal__content">
+            <header class="modal__header">
+                <h2 id="edit-user-title">
+                    Modifier l’utilisateur
+                </h2>
+
+                <button
+                    class="modal__close"
+                    type="button"
+                    data-close-dialog="edit-user-dialog"
+                    aria-label="Fermer la fenêtre"
+                >
+                    ×
+                </button>
+            </header>
+
+            <form id="edit-user-form" class="modal__form">
+                <input
+                    id="edit-user-id"
+                    name="user_id"
+                    type="hidden"
+                >
+
+                <div
+                    id="edit-user-error"
+                    class="alert alert--error"
+                    role="alert"
+                    aria-live="assertive"
+                    hidden
+                >
+                    <p id="edit-user-error-message"></p>
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="edit-username"
+                    >
+                        Identifiant
+                    </label>
+
+                    <input
+                        id="edit-username"
+                        class="form-field__input"
+                        name="username"
+                        type="text"
+                        minlength="3"
+                        maxlength="50"
+                        required
+                    >
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="edit-branch-id"
+                    >
+                        Branche d’affectation
+                    </label>
+
+                    <select
+                        id="edit-branch-id"
+                        class="form-field__select"
+                        name="branch_id"
+                        required
+                    >
+                        <option value="">
+                            Sélectionnez une branche
+                        </option>
+                    </select>
+                </div>
+
+                <footer class="modal__footer">
+                    <button
+                        class="button button--secondary"
+                        type="button"
+                        data-close-dialog="edit-user-dialog"
+                    >
+                        Annuler
+                    </button>
+
+                    <button
+                        id="edit-user-submit"
+                        class="button button--primary"
+                        type="submit"
+                    >
+                        Enregistrer
+                    </button>
+                </footer>
+            </form>
+        </div>
+    </dialog>
+
+    <!-- Changement du mot de passe -->
+    <dialog
+        id="password-dialog"
+        class="modal"
+        aria-labelledby="password-dialog-title"
+    >
+        <div class="modal__content">
+            <header class="modal__header">
+                <h2 id="password-dialog-title">
+                    Changer le mot de passe
+                </h2>
+
+                <button
+                    class="modal__close"
+                    type="button"
+                    data-close-dialog="password-dialog"
+                    aria-label="Fermer la fenêtre"
+                >
+                    ×
+                </button>
+            </header>
+
+            <form id="password-form" class="modal__form">
+                <input
+                    id="password-user-id"
+                    name="user_id"
+                    type="hidden"
+                >
+
+                <p>
+                    Utilisateur :
+                    <strong id="password-username"></strong>
+                </p>
+
+                <div
+                    id="password-form-error"
+                    class="alert alert--error"
+                    role="alert"
+                    aria-live="assertive"
+                    hidden
+                >
+                    <p id="password-form-error-message"></p>
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="new-password"
+                    >
+                        Nouveau mot de passe
+                    </label>
+
+                    <input
+                        id="new-password"
+                        class="form-field__input"
+                        name="password"
+                        type="password"
+                        autocomplete="new-password"
+                        required
+                    >
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="new-password-confirmation"
+                    >
+                        Confirmer le mot de passe
+                    </label>
+
+                    <input
+                        id="new-password-confirmation"
+                        class="form-field__input"
+                        name="password_confirmation"
+                        type="password"
+                        autocomplete="new-password"
+                        required
+                    >
+                </div>
+
+                <footer class="modal__footer">
+                    <button
+                        class="button button--secondary"
+                        type="button"
+                        data-close-dialog="password-dialog"
+                    >
+                        Annuler
+                    </button>
+
+                    <button
+                        id="password-submit"
+                        class="button button--primary"
+                        type="submit"
+                    >
+                        Modifier le mot de passe
+                    </button>
+                </footer>
+            </form>
+        </div>
+    </dialog>
+
+    <!-- Confirmation du soft-delete -->
+    <dialog
+        id="delete-user-dialog"
+        class="modal"
+        aria-labelledby="delete-user-title"
+    >
+        <div class="modal__content">
+            <header class="modal__header">
+                <h2 id="delete-user-title">
+                    Désactiver l’utilisateur
+                </h2>
+            </header>
+
+            <form id="delete-user-form" class="modal__form">
+                <input
+                    id="delete-user-id"
+                    name="user_id"
+                    type="hidden"
+                >
+
+                <div class="alert alert--warning">
+                    <p>
+                        L’utilisateur
+                        <strong id="delete-username"></strong>
+                        ne pourra plus se connecter.
+                    </p>
+
+                    <p>
+                        Ses anciens enregistrements et les stocks existants
+                        ne seront pas supprimés.
+                    </p>
+                </div>
+
+                <div
+                    id="delete-user-error"
+                    class="alert alert--error"
+                    role="alert"
+                    aria-live="assertive"
+                    hidden
+                >
+                    <p id="delete-user-error-message"></p>
+                </div>
+
+                <footer class="modal__footer">
+                    <button
+                        class="button button--secondary"
+                        type="button"
+                        data-close-dialog="delete-user-dialog"
+                    >
+                        Annuler
+                    </button>
+
+                    <button
+                        id="delete-user-submit"
+                        class="button button--danger"
+                        type="submit"
+                    >
+                        Confirmer la désactivation
+                    </button>
+                </footer>
+            </form>
+        </div>
+    </dialog>
+
+</body>
+</html>

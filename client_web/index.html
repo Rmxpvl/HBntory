@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Recherchez les produits et les stocks disponibles avec HBntory"
+    >
+
+    <title>Recherche de produits | HBntory</title>
+
+    <link rel="stylesheet" href="./css/variables.css">
+    <link rel="stylesheet" href="./css/base.css">
+    <link rel="stylesheet" href="./css/style.css">
+
+    <script type="module" src="./js/app.js" defer></script>
+</head>
+
+<body class="public-page">
+
+    <header class="public-header">
+        <a
+            class="public-header__brand"
+            href="./index.html"
+            aria-label="Accueil HBntory"
+        >
+            <span class="public-header__logo" aria-hidden="true">
+                HB
+            </span>
+
+            <span class="public-header__name">
+                HBntory
+            </span>
+        </a>
+    </header>
+
+    <main class="public-main">
+
+        <!-- Introduction -->
+        <section
+            class="query-hero"
+            aria-labelledby="query-page-title"
+        >
+            <p class="query-hero__eyebrow">
+                Recherche intelligente
+            </p>
+
+            <h1 id="query-page-title">
+                Que recherchez-vous ?
+            </h1>
+
+            <p class="query-hero__description">
+                Interrogez les produits et les stocks disponibles.
+            </p>
+        </section>
+
+        <!-- Formulaire de question -->
+        <section
+            class="query-section"
+            aria-labelledby="query-form-title"
+        >
+            <h2 id="query-form-title" class="sr-only">
+                Poser une question
+            </h2>
+
+            <form id="query-form" class="query-form">
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="question"
+                    >
+                        Votre question
+                    </label>
+
+                    <textarea
+                        id="question"
+                        class="query-form__input"
+                        name="question"
+                        rows="3"
+                        minlength="3"
+                        maxlength="1000"
+                        placeholder="Exemple : Dans quel magasin puis-je trouver 1 laptop  ?"
+                        required
+                        aria-describedby="question-help question-error"
+                    ></textarea>
+
+                    <div class="query-form__counter">
+                        <p aria-live="polite">
+                            <span id="question-character-count">0</span>
+                            / 1000
+                        </p>
+                    </div>
+
+                    <p
+                        id="question-error"
+                        class="form-field__error"
+                        role="alert"
+                        hidden
+                    >
+                        Saisissez une question avant de lancer la recherche.
+                    </p>
+                </div>
+
+                <button
+                    id="query-submit"
+                    class="button button--primary button--large"
+                    type="submit"
+                >
+                    Rechercher
+                </button>
+            </form>
+        </section>
+
+        <!-- Exemples de questions -->
+        <section
+            class="query-examples"
+            aria-labelledby="query-examples-title"
+        >
+            <h2 id="query-examples-title">
+                Exemples de questions
+            </h2>
+
+            <div class="query-examples__list">
+                <button
+                    class="query-example"
+                    type="button"
+                    data-question="Donne-moi les détails du produit P-012."
+                >
+                    Détails du USB-C Teaching Dock
+                </button>
+
+                <button
+                    class="query-example"
+                    type="button"
+                    data-question="Quels produits sont disponibles dans la branche Annecy ?"
+                >
+                    Produits dispo à Annecy
+                </button>
+
+                <button
+                    class="query-example"
+                    type="button"
+                    data-question="Dans quelle branche le produit P-001 est-il disponible ?"
+                >
+                    Trouver un Laptop
+                </button>
+
+                <button
+                    class="query-example"
+                    type="button"
+                    data-question="Où puis-je acheter 3 unités de P-001 et 2 unités de P-005 ?"
+                >
+                    Préparer une liste
+                </button>
+            </div>
+        </section>
+
+        <!-- Chargement -->
+        <section
+            id="query-loading"
+            class="query-result query-result--loading"
+            role="status"
+            aria-live="polite"
+            aria-labelledby="query-loading-title"
+            hidden
+        >
+            <div
+                class="loading-message__spinner"
+                aria-hidden="true"
+            ></div>
+
+            <div>
+                <h2 id="query-loading-title">
+                    Recherche en cours
+                </h2>
+
+                <p>
+                    Nous consultons les informations produit et les stocks…
+                </p>
+            </div>
+        </section>
+
+        <!-- Erreur -->
+        <section
+            id="query-error"
+            class="query-result query-result--error"
+            role="alert"
+            aria-live="assertive"
+            aria-labelledby="query-error-title"
+            hidden
+        >
+            <h2 id="query-error-title">
+                Impossible d’obtenir une réponse
+            </h2>
+
+            <p id="query-error-message">
+                Le service est temporairement indisponible.
+            </p>
+
+            <button
+                id="retry-query-button"
+                class="button button--secondary"
+                type="button"
+            >
+                Réessayer
+            </button>
+        </section>
+
+        <!-- Réponse de l’IA -->
+        <section
+            id="query-result"
+            class="query-result query-result--success"
+            aria-labelledby="query-result-title"
+            hidden
+        >
+            <header class="query-result__header">
+                <p class="query-result__eyebrow">
+                    Résultat
+                </p>
+
+                <h2 id="query-result-title">
+                    Réponse
+                </h2>
+            </header>
+
+            <article class="query-answer">
+                <p
+                    id="query-answer"
+                    class="query-answer__content"
+                    tabindex="-1"
+                ></p>
+            </article>
+
+            <footer class="query-result__footer">
+                <p>
+                    Réponse fondée sur les informations disponibles
+                    au moment de la requête.
+                </p>
+
+                <button
+                    id="new-query-button"
+                    class="button button--secondary"
+                    type="button"
+                >
+                    Poser une autre question
+                </button>
+            </footer>
+        </section>
+
+    </main>
+
+    <footer class="public-footer">
+        <p>
+            HBntory — Consultation des produits et des stocks
+        </p>
+    </footer>
+
+</body>
+</html>

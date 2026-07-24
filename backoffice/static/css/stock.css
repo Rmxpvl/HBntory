@@ -1,0 +1,113 @@
+.stock-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  max-width: 38rem;
+  margin-bottom: var(--space-8);
+}
+
+.stock-section {
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-white);
+  box-shadow: var(--shadow-sm);
+}
+
+.search-form {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-blue-50);
+}
+
+.search-form__label {
+  color: var(--color-navy-900);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.search-form__controls {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto auto;
+  gap: var(--space-3);
+}
+
+.search-form__input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+}
+
+.search-form__input:focus {
+  border-color: var(--color-blue-600);
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.stock-availability {
+  padding: var(--space-3);
+  margin: 0;
+  border-left: 0.25rem solid var(--color-teal-600);
+  border-radius: var(--radius-sm);
+  color: var(--color-teal-700);
+  background: var(--color-teal-100);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.product-cell {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.product-cell__name {
+  color: var(--color-navy-900);
+  font-weight: 700;
+}
+
+.product-cell__description {
+  max-width: 34rem;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.quantity-value {
+  color: var(--color-navy-900);
+  font-size: var(--font-size-lg);
+  font-weight: 800;
+}
+
+@media (max-width: 48rem) {
+  .stock-section {
+    padding: var(--space-4);
+  }
+
+  .search-form__controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .search-form__input {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 30rem) {
+  .stock-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .search-form__controls {
+    grid-template-columns: 1fr;
+  }
+
+  .search-form__input {
+    grid-column: auto;
+  }
+}
