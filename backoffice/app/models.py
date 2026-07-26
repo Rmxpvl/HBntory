@@ -13,8 +13,8 @@ class Branch(Base):
     localisation = Column(String, nullable=False)
 
 
-    stocks = relationship("Stock", back_populates="branch")
-    users = relationship("User", back_populates="branch")
+    stocks = relationship("Stock", back_populates="branch", passive_deletes=True)
+    users = relationship("User", back_populates="branch", passive_deletes=True)
 
 class Role(PyEnum):
     COMMON = "Common"
@@ -34,7 +34,7 @@ class User(Base):
     username = Column(String, nullable=False, unique=True)
     password_hash = Column(String,nullable=False)
     role = Column(SAEnum(Role, values_callable=lambda enum_cls: [e.value for e in enum_cls]), nullable=False)
-    branch_id = Column(Integer, ForeignKey("branches.branch_id"), nullable=True)
+    branch_id = Column(Integer, ForeignKey("branches.branch_id", ondelete ="RESTRICT"), nullable=True)
     status = Column(SAEnum(UserStatus, values_callable=lambda enum_cls: [e.value for e in enum_cls]), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
@@ -67,7 +67,7 @@ class Stock(Base):
 
     stock_id = Column(Integer, primary_key=True)
     product_id = Column(Integer, nullable=False)
-    branch_id = Column(Integer, ForeignKey("branches.branch_id"), nullable=False)
+    branch_id = Column(Integer, ForeignKey("branches.branch_id", ondelete="RESTRICT"), nullable=False)
     quantity = Column(Integer, nullable=False)
 
     branch = relationship("Branch", back_populates="stocks")
