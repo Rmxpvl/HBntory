@@ -14,7 +14,7 @@ Conformément à l'architecture (`architecture_FR.md`), les informations produit
 | `username` | texte | `UNIQUE`, `NOT NULL` |
 | `password_hash` | texte | `NOT NULL` |
 | `role` | énumération (`Admin` \| `Common`) | `NOT NULL` |
-| `branch_id` | entier | clé étrangère → `branches.branch_id`, nullable |
+| `branch_id` | entier | clé étrangère → `branches.branch_id` (`ON DELETE RESTRICT`), nullable |
 | `status` | énumération (`Active` \| `Inactive`) | `NOT NULL`, aucune valeur par défaut au niveau base — doit être fournie explicitement à la création |
 | `deleted_at` | horodatage (avec fuseau) | nullable — `NULL` tant que le compte n'est pas soft-supprimé, rempli à la date de suppression logique sinon |
 | `created_at` | horodatage (avec fuseau) | `NOT NULL`, valeur posée par PostgreSQL (`server_default=now()`) |
@@ -62,7 +62,7 @@ Aucun autre champ n'a été ajouté (pas de statut d'ouverture, pas de descripti
 | --- | --- | --- |
 | `stock_id` | entier | clé primaire |
 | `product_id` | entier | `NOT NULL` — identifiant numérique externe, retourné par l'API Produit |
-| `branch_id` | entier | clé étrangère → `branches.branch_id`, `NOT NULL` |
+| `branch_id` | entier | clé étrangère → `branches.branch_id` (`ON DELETE RESTRICT`), `NOT NULL` |
 | `quantity` | entier | `NOT NULL`, aucune valeur par défaut au niveau base — doit être fournie explicitement à l'écriture |
 
 Contraintes de table :
@@ -87,6 +87,8 @@ branches (1) ──< (N) stocks       via stocks.branch_id
 Un `Common` appartient à exactement une agence (`users.branch_id NOT NULL` imposé par la contrainte combinée). Un `Admin` n'appartient à aucune agence (`branch_id IS NULL` imposé par la même contrainte). Une agence peut avoir plusieurs lignes de stock, une par produit distinct (garanti par `UNIQUE`).
 
 Les relations Python (`relationship()` SQLAlchemy) sont implémentées dans `backoffice/app/models.py` : `branch.users`, `branch.stocks`, `user.branch`, `stock.branch`, en double sens (`back_populates`) pour naviguer sans requête manuelle.
+
+**Suppression d'une `Branch` avec `users`/`stocks` rattachés :** interdite explicitement (`ON DELETE RESTRICT` sur les deux FK). La DB rejette le `DELETE FROM branches` tant qu'il reste au moins une ligne `users` ou `stocks` la référençant — l'admin doit d'abord réaffecter ou supprimer (soft-delete pour les users) les lignes dépendantes. Côté SQLAlchemy, `passive_deletes=True` est posé sur `Branch.users`/`Branch.stocks` (le côté collection) pour laisser la contrainte FK gérer le rejet directement, plutôt que l'ORM tente une mise à NULL preemptive des enfants avant d'échouer.
 
 ## 6. Ce qui n'est volontairement pas dans ce schéma
 
