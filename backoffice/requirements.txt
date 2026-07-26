@@ -1,2 +1,3 @@
 sqlalchemy==2.0.51
 psycopg2-binary==2.9.12
+argon2-cffi==25.1.0

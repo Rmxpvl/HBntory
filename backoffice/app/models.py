@@ -3,6 +3,7 @@
 from sqlalchemy import Column, Integer, String, Enum as SAEnum, DateTime, func, ForeignKey, CheckConstraint, UniqueConstraint
 from .db import Base
 from enum import Enum as PyEnum
+from sqlalchemy.orm import relationship
 
 
 class Branch(Base):
@@ -11,6 +12,9 @@ class Branch(Base):
     branch_id = Column(Integer, primary_key=True)
     localisation = Column(String, nullable=False)
 
+
+    stocks = relationship("Stock", back_populates="branch")
+    users = relationship("User", back_populates="branch")
 
 class Role(PyEnum):
     COMMON = "Common"
@@ -29,9 +33,10 @@ class User(Base):
     user_id = Column(Integer, primary_key=True)
     username = Column(String, nullable=False, unique=True)
     password_hash = Column(String,nullable=False)
-    role = Column(SAEnum(Role), nullable=False)
+    role = Column(SAEnum(Role, values_callable=lambda enum_cls: [e.value for e in enum_cls]), nullable=False)
     branch_id = Column(Integer, ForeignKey("branches.branch_id"), nullable=True)
-    status = Column(SAEnum(UserStatus), nullable=False)
+    status = Column(SAEnum(UserStatus, values_callable=lambda enum_cls: [e.value for e in enum_cls]), nullable=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -49,7 +54,13 @@ class User(Base):
         CheckConstraint(
             "(role = 'Admin' AND branch_id IS NULL) OR (role = 'Common' AND branch_id IS NOT NULL)"
         ),
+        CheckConstraint(
+            "(status != 'Active' OR deleted_at IS NULL)"
+        ),
     )
+
+    branch = relationship("Branch", back_populates="users")
+
 
 class Stock(Base):
     __tablename__ = "stocks"
@@ -58,6 +69,8 @@ class Stock(Base):
     product_id = Column(Integer, nullable=False)
     branch_id = Column(Integer, ForeignKey("branches.branch_id"), nullable=False)
     quantity = Column(Integer, nullable=False)
+
+    branch = relationship("Branch", back_populates="stocks")
 
     __table_args__ = (
         CheckConstraint("quantity >= 0", name="check_stock_quantity"),
