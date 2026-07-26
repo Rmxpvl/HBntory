@@ -16,10 +16,11 @@ Conformément à l'architecture (`architecture_FR.md`), les informations produit
 | `role` | énumération (`Admin` \| `Common`) | `NOT NULL` |
 | `branch_id` | entier | clé étrangère → `branches.branch_id`, nullable |
 | `status` | énumération (`Active` \| `Inactive`) | `NOT NULL`, aucune valeur par défaut au niveau base — doit être fournie explicitement à la création |
+| `deleted_at` | horodatage (avec fuseau) | nullable — `NULL` tant que le compte n'est pas soft-supprimé, rempli à la date de suppression logique sinon |
 | `created_at` | horodatage (avec fuseau) | `NOT NULL`, valeur posée par PostgreSQL (`server_default=now()`) |
 | `updated_at` | horodatage (avec fuseau) | `NOT NULL`, posée et rafraîchie par PostgreSQL (`server_default`/`onupdate=now()`) |
 
-Contrainte de table :
+Contraintes de table :
 
 ```sql
 CHECK (
@@ -27,12 +28,15 @@ CHECK (
   OR
   (role = 'Common' AND branch_id IS NOT NULL)
 )
+CHECK (status != 'Active' OR deleted_at IS NULL)
 ```
 
 **Justifications :**
 - `password_hash` ne contient jamais de mot de passe en clair ni chiffré de façon réversible : c'est un hash Argon2id (irréversible, résistant au brute-force). Chiffrer un mot de passe impliquerait une clé de déchiffrement quelque part, ce qui recrée un risque en cas de fuite.
 - `role` et `branch_id` sont liés par une contrainte `CHECK` combinée plutôt qu'une simple colonne nullable : une colonne nullable seule autoriserait un `Common` sans branche ou un `Admin` avec une branche, deux états incohérents. La contrainte les empêche au niveau base, indépendamment de tout bug applicatif.
-- `status` sert de soft-delete : un utilisateur désactivé passe à `Inactive` plutôt que d'être supprimé physiquement. Son historique (créations de stock, etc.) reste traçable. **Point d'attention :** la colonne n'a actuellement aucune valeur par défaut au niveau base — le code applicatif (script de seed, endpoint de création) doit fixer `Active` explicitement à la création d'un utilisateur.
+- `status` distingue une **suspension réversible** (`Active` ↔ `Inactive`, un compte peut redevenir actif) de la **suppression logique**, portée par `deleted_at`. Les deux notions sont séparées volontairement : mélanger suspension et suppression dans une seule colonne (ex. un 3ᵉ statut `Deleted`) empêcherait de distinguer proprement les deux cycles de vie et perdrait la date de suppression.
+- `deleted_at` : soft-delete au sens strict — un utilisateur supprimé n'est jamais retiré physiquement de la table, cette colonne porte la date de suppression. Son historique (créations de stock, etc.) reste traçable. La contrainte `CHECK (status != 'Active' OR deleted_at IS NULL)` empêche l'état incohérent "compte actif mais marqué supprimé", indépendamment de tout bug applicatif.
+- `role` et `status` utilisent tous deux `SAEnum(..., values_callable=...)` côté SQLAlchemy : par défaut, `sqlalchemy.Enum` persiste le `.name` du membre Python (`'ADMIN'`, `'ACTIVE'`) plutôt que son `.value` (`'Admin'`, `'Active'`). Sans ce paramètre, les `CHECK` ci-dessus (qui comparent aux valeurs `'Admin'`/`'Active'`) ne matcheraient jamais la valeur réellement stockée — bug silencieux constaté et corrigé pendant l'implémentation (vérifié par insertion de test + lecture SQL brute).
 - `created_at`/`updated_at` : traçabilité, calculées côté PostgreSQL (`server_default`) plutôt que côté Python, pour rester correctes même en cas d'insertion hors du chemin applicatif habituel (script SQL direct, migration de données).
 
 ### Règle : admin non assigné à la gestion de stock
@@ -82,7 +86,7 @@ branches (1) ──< (N) stocks       via stocks.branch_id
 
 Un `Common` appartient à exactement une agence (`users.branch_id NOT NULL` imposé par la contrainte combinée). Un `Admin` n'appartient à aucune agence (`branch_id IS NULL` imposé par la même contrainte). Une agence peut avoir plusieurs lignes de stock, une par produit distinct (garanti par `UNIQUE`).
 
-Les relations Python (`relationship()` SQLAlchemy, pour naviguer `branch.users`/`user.branch`/`branch.stocks` sans requête manuelle) ne sont pas encore implémentées dans `backoffice/app/models.py` — prévues à la suite de l'étape "Implement SQLAlchemy Models".
+Les relations Python (`relationship()` SQLAlchemy) sont implémentées dans `backoffice/app/models.py` : `branch.users`, `branch.stocks`, `user.branch`, `stock.branch`, en double sens (`back_populates`) pour naviguer sans requête manuelle.
 
 ## 6. Ce qui n'est volontairement pas dans ce schéma
 
