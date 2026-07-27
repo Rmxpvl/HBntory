@@ -53,6 +53,35 @@ Décision d'authentification corrigée : **session cookie signée, HTTP-only, sa
 - [ ] Rate limiting basique sur `/login` (protection brute-force) — bon ajout portfolio sécurité, à voir si le temps permet.
 - [ ] Documentation : stratégie Argon2id, stratégie session/CSRF, matrice RBAC.
 
+## Section 3 — Backoffice Functionalities
+
+Section de la consigne pas anticipée dans la répartition initiale (absente jusqu'ici de ce plan). Découpage par sous-tâche :
+
+| Sous-tâche | Qui | Notes |
+| --- | --- | --- |
+| 1. Common User Stock Operations | Moi | Logique déjà écrite (`app/services/stock_services.py`), reste la couche REST + RBAC branche |
+| 2. Admin User Management | Moi | Lié à Task 2 (Auth/RBAC) — CRUD users, soft-delete, changement branche/mot de passe |
+| 3. Product API Integration in Backoffice | Moi (point d'entrée backend) | Le backend doit exposer un moyen d'interroger l'API Produit externe ; le frontend (Personne 2) consomme cet endpoint. Jamais de détails produit dupliqués en local DB |
+| 4. Backoffice Interface | Personne 2 (nico) | HTML/CSS des 4 pages déjà mergé sur `master`. Mon rôle : fournir des endpoints REST fonctionnels à brancher dessus |
+
+- [ ] 1 — Common User Stock Operations :
+  - [ ] `POST /stock/add` (branche déduite de la session, jamais du body client — cf. RBAC Task 2)
+  - [ ] `POST /stock/remove`
+  - [ ] `GET /stock` (liste produits en stock, filtrée sur la branche de l'utilisateur connecté)
+  - [ ] `GET /stock/{product_id}` (quantité disponible pour un produit, dans sa branche)
+  - [ ] Backend doit rejeter toute tentative d'opérer sur une branche différente de celle de l'utilisateur (pas seulement côté UI)
+- [ ] 2 — Admin User Management :
+  - [ ] `GET /users` (liste)
+  - [ ] `POST /users` (création, common uniquement — un admin ne se crée pas via cet endpoint sans contrôle)
+  - [ ] `PUT /users/{id}` (changement branche, changement mot de passe)
+  - [ ] `DELETE /users/{id}` (soft-delete : `status=Inactive` + `deleted_at`, jamais de suppression physique)
+  - [ ] Vérifier : un user soft-deleted ne peut plus se connecter (Task 2, check au login), et son historique de stock reste intact (déjà garanti par le schéma — `Stock` ne référence aucun `user_id`)
+- [ ] 3 — Product API Integration in Backoffice :
+  - [ ] Décider du mode d'exposition (proxy backend vers l'API Produit, ou sélecteur/recherche côté frontend qui appelle l'API Produit directement) — à trancher avant de coder
+  - [ ] Aucune donnée produit (nom, prix, description) stockée en local, uniquement `product_id` — déjà respecté par le schéma
+  - [ ] Résoudre le point d'attention `product_id` (Integer local vs SKU string API externe, cf. Task 1) avant d'intégrer pour de vrai
+- [ ] 4 — Backoffice Interface : côté moi, s'assurer que les endpoints REST ci-dessus répondent avec des codes HTTP et payloads exploitables par les pages déjà présentes dans `backoffice/static/`
+
 ## Endpoints REST Backoffice à livrer
 
 - [ ] `POST /login`
