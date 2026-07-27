@@ -15,23 +15,28 @@ Décision d'authentification corrigée : **session cookie signée, HTTP-only, sa
 
 ## Task 1 — Database Design and Backoffice Foundation
 
-- [ ] Concevoir le schéma PostgreSQL : `users`, `branches`, `stock`.
-  - [ ] `users` : username, password_hash, role (`admin`/`common`), branch_id (nullable pour admin), is_active/deleted_at, created_at, updated_at.
-  - [ ] `branches` : id, name.
-  - [ ] `stock` : id, branch_id (FK), product_id (identifiant externe numérique), quantity (contrainte >= 0), created_at, updated_at.
-- [ ] Contrainte DB : `quantity >= 0` (CHECK constraint), pas seulement validation applicative.
-- [ ] Contrainte : un `common` a exactement une branche ; `admin` n'a pas de branche.
-- [ ] Implémenter les modèles SQLAlchemy + relations (User↔Branch, Branch↔Stock).
-- [ ] Script d'initialisation (seed) :
-  - [ ] 1 admin (mot de passe hashé, jamais en clair dans le script/commit).
-  - [ ] Au moins 2 branches.
-  - [ ] Stock d'exemple suffisant pour tester.
-- [ ] Migration Alembic initiale.
-- [ ] Validation métier stock :
-  - [ ] quantité entière positive obligatoire pour add/remove.
-  - [ ] remove refusé si stock insuffisant.
-  - [ ] product_id validé contre le Product API externe avant écriture (quand applicable).
-- [ ] Documenter le schéma (docs/db-schema.md ou équivalent) + justification des choix (pourquoi pas de table produit locale, pourquoi soft-delete, etc.).
+- [x] Concevoir le schéma PostgreSQL : `users`, `branches`, `stocks`.
+  - [x] `users` : username, password_hash, role (`Admin`/`Common`), branch_id (nullable pour admin), status (Active/Inactive, réversible) + `deleted_at` (soft-delete distinct), created_at, updated_at.
+  - [x] `branches` : branch_id, localisation. (pas de `name` séparé — un seul champ suffisait, pas justifié d'en ajouter un 2e)
+  - [x] `stocks` : stock_id, branch_id (FK, `ON DELETE RESTRICT`), product_id (identifiant externe entier), quantity (contrainte >= 0). **Pas de `created_at`/`updated_at` sur `stocks`** — écart volontaire par rapport à ce plan initial, à assumer ou revoir si l'historique des mouvements de stock devient nécessaire.
+- [x] Contrainte DB : `quantity >= 0` (CHECK constraint), pas seulement validation applicative.
+- [x] Contrainte : un `Common` a exactement une branche ; `Admin` n'a pas de branche.
+- [x] Implémenter les modèles SQLAlchemy + relations (User↔Branch, Branch↔Stock, `back_populates` + `passive_deletes`).
+- [x] Script d'initialisation (seed) :
+  - [x] 1 admin (mot de passe hashé Argon2, jamais en clair — lu depuis `ADMIN_PASSWORD` en variable d'environnement).
+  - [x] 3 branches (Annecy, Thonon-les-bains, Genève).
+  - [x] Stock d'exemple par branche, suffisant pour tester. Testé end-to-end en SQLite.
+  - [x] Idempotent (vérifie l'existant avant chaque insert).
+- [ ] Migration Alembic initiale — **pas encore fait**, on utilise seulement `Base.metadata.create_all()` pour l'instant. À faire avant une vraie mise en prod / Task 7.
+- [x] Validation métier stock (Task 4) — `app/services/stock_services.py`, testée end-to-end en SQLite (API Produit mockée) :
+  - [x] quantité entière positive obligatoire (`_validate_stock_operation`, partagée par add/remove).
+  - [x] branche valide vérifiée avant toute opération.
+  - [x] `add_stock` : incrémente si la ligne existe déjà, sinon valide le produit via l'API externe puis crée la ligne.
+  - [x] `remove_stock` : rejette si la ligne n'existe pas, rejette si la quantité à retirer dépasse le stock disponible.
+  - [x] product_id validé contre le Product API externe (`GET {PRODUCT_API_URL}/api/v1/products/{id}`) **uniquement à la création d'une nouvelle ligne** — pas re-vérifié à chaque réapprovisionnement d'une ligne déjà existante (décision assumée : le produit a déjà été validé une fois).
+  - [ ] **Point d'attention non résolu** : l'API Produit externe utilise des ID exemples type SKU (`"HB-LAP-1001"`), alors que `Stock.product_id` est un `Integer` en base — à clarifier avec l'équipe/le prof avant intégration réelle (peut nécessiter de changer le type de la colonne).
+  - [ ] Pas encore de tests automatisés formels (pytest) — validé pour l'instant par un script ad hoc, à formaliser en Task 7.
+- [x] Documenter le schéma (`docs/db-schema.md`) + justification des choix, tenu à jour à chaque changement.
 
 ## Task 2 — Authentication and Authorization
 
