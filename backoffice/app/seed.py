@@ -2,10 +2,9 @@
 
 import os
 
-from argon2 import PasswordHasher
-
 from .db import Base, SessionLocal, engine
 from .models import Branch, Role, Stock, User, UserStatus
+from .auth.passwords import hash_password  # Task 2.2, done early — see PR description
 
 
 BRANCH_LOCATIONS = (
@@ -64,10 +63,9 @@ def seed_database():
         )
 
         if existing_admin is None:
-            password_hasher = PasswordHasher()
             admin = User(
                 username="admin",
-                password_hash=password_hasher.hash(admin_password),
+                password_hash=hash_password(admin_password),  # was PasswordHasher().hash(...), now shared
                 role=Role.ADMIN,
                 status=UserStatus.ACTIVE,
             )
