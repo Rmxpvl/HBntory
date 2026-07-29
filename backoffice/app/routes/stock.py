@@ -50,3 +50,34 @@ def require_common(
         )
 
     return actor
+
+@router.post("/add")
+def add(
+    change: StockChange,
+    actor: Actor = Depends(require_common),
+    db=Depends(get_db),
+):
+    try:
+        stock = stock_services.add_stock(
+            db,
+            actor.branch_id,
+            change.product_id,
+            change.quantity,
+        )
+
+        return {
+            "product_id": stock.product_id,
+            "quantity": stock.quantity,
+        }
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=str(exc),
+        ) from exc
