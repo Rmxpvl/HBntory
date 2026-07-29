@@ -1,4 +1,5 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from .auth.current_actor import Actor, get_current_actor
 from .dependencies import get_db
@@ -13,6 +14,19 @@ app = FastAPI(title="HBntory Backoffice")
 # Make the stock and user routes available under /api.
 app.include_router(stock.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
+
+
+@app.exception_handler(HTTPException)
+async def api_error(
+    _request: Request,
+    exc: HTTPException,
+):
+    # Return errors in the format expected by the frontend.
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": str(exc.detail)},
+        headers=exc.headers,
+    )
 
 
 @app.get("/api/auth/me")
@@ -40,8 +54,15 @@ def current_user(
 def products(
     actor: Actor = Depends(get_current_actor),
 ):
-    # Retrieve the complete catalogue from the external Product API.
-    return product_client.list_products()
+    try:
+        # Retrieve the complete catalogue from the external Product API.
+        return product_client.list_products()
+
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=str(exc),
+        ) from exc
 
 
 @app.get("/api/branches")
