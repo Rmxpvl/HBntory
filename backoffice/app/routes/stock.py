@@ -51,6 +51,25 @@ def require_common(
 
     return actor
 
+@router.get("")
+def list_stock(
+    actor: Actor = Depends(require_common),
+    db=Depends(get_db),
+):
+    try:
+        # Return only the logged-in user’s branch stock.
+        return stock_services.list_branch_stock(
+            db,
+            actor.branch_id,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+
 @router.post("/add")
 def add(
     change: StockChange,
