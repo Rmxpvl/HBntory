@@ -11,3 +11,5 @@ from ..auth.current_actor import Actor, get_current_actor
 from ..dependencies import get_db
 from ..models import Role
 from ..services import stock_services
+
+router = APIRouter(prefix="/stock")
