@@ -7,11 +7,13 @@ Ce document définit mon rôle dans le projet HBntory (Lead Backend), corrige la
 | Rôle | Responsable | Contenu |
 | --- | --- | --- |
 | Lead Backend / Sécurité / DB | Moi | Task 1 (DB + Backoffice foundation), Task 2 (Auth + RBAC), endpoints REST Backoffice |
-| Frontend | Personne 2 | Task 6, Backoffice UI (login, dashboard admin, dashboard user), Client Web UI |
-| IA / MCP | Personne 3 | Task 4 (MCP Server), Task 5 (AI Query Service, en dernier, optionnel — voir `mvp-definition.md` Phase 7) |
+| Frontend | Personne 2 | Backoffice UI (login, dashboard admin, dashboard user) |
+| IA / MCP | Personne 3 | Task 4 (MCP Server) uniquement |
 | Task 7 (Intégration/Tests/README) | Tout le monde, chacun sur sa partie | Backend: tests + doc API + README backend |
 
-**Trou non résolu — backend de `client_web`** : "Personne 2" ci-dessus couvre "Client Web UI", c'est-à-dire le frontend de la page publique (`client_web/index.html` + `js/*.js`, actuellement vides). Mais `architecture_EN.md` (section "Public Client Service and Web Interface") décrit aussi un **petit backend REST** pour ce service — requêtes stock en lecture seule via SQLAlchemy, récupération des données produit via le Product MCP Server, service anonyme (pas d'auth, ne crée pas d'utilisateur, ne modifie pas le stock). Ce backend n'existe nulle part dans le repo et n'est assigné à personne dans ce tableau : ni moi (Backend/DB), ni Personne 3 (MCP), ni explicitement Personne 2. Touche à la fois la DB (mon domaine) et les tools MCP (Personne 3) — **à trancher en équipe**, pas une décision à prendre seul.
+**Task 5 (AI Query Service) et Task 6 (Client Web Interface) : hors périmètre**, décision actée avec le responsable du projet — on ne les fait pas. Ancienne note ("trou non résolu — backend de `client_web`") retirée : elle partait d'une lecture de `architecture_EN.md`/`mvp-definition.md` (docs internes d'architecture) plutôt que de l'énoncé officiel des tâches. En relisant le vrai texte de Task 5/6 : c'est l'AI Query Service (Task 5, jamais construit) qui devait se connecter au MCP server et gérer l'accès au stock (au choix : étendre le MCP server, un DB MCP tool, ou une API interne) — pas `client_web` (Task 6), qui n'aurait été qu'une page appelant l'endpoint de Task 5. Comme Task 5/6 ne se font pas, `client_web/` reste un squelette statique (JS vides) sans que ce soit un manque à combler.
+
+Conséquence pour Task 4 (MCP Server, déjà fait et vérifié) : il n'aura pas de vrai consommateur (l'AI agent qui devait l'utiliser ne sera pas construit) — à mentionner clairement dans le README/la présentation finale comme un choix de périmètre assumé, pas un oubli.
 
 Décision d'authentification corrigée : **session cookie signée, HTTP-only, same-site + protection CSRF sur les requêtes qui modifient l'état** (pas de JWT). Raison : cohérent avec l'architecture déjà écrite, invalidation immédiate d'un utilisateur soft-deleted plus simple qu'avec un JWT (pas de blocklist/refresh à gérer), et le Backoffice est une app browser classique, pas consommée par un client tiers.
 
