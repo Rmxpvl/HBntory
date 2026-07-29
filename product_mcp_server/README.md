@@ -8,11 +8,16 @@ never touches PostgreSQL and knows nothing about stock, branches, or users.
 ## Running it
 
 ```bash
-# Terminal 1 — external Product API (from the hbntory-products-api folder)
-docker compose up
+# Terminal 1 — external Product API (clone it as a sibling of this repo)
+git clone https://github.com/hbtn-edu/hbntory-products-api.git
+cd hbntory-products-api
+docker compose up --build
+# serves the API at http://localhost:5001
 
 # Terminal 2 — this server
-source .venv/bin/activate
+cd product_mcp_server
+python -m venv .venv && source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+pip install -r requirements.txt
 python server.py
 # serves MCP at http://127.0.0.1:8000/mcp
 ```
@@ -56,21 +61,30 @@ Two ordering details matter in the code:
 
 ## Manual test evidence
 
-Tested against the running Product API and `server.py`, through the MCP
-Inspector (`npx @modelcontextprotocol/inspector`), Streamable HTTP transport,
-connected to `http://127.0.0.1:8000/mcp`.
+Run against the real `hbntory-products-api` (github.com/hbtn-edu/hbntory-products-api,
+`docker compose up --build`, port 5001) by calling `server.py`'s tool
+functions directly in a Python shell — not the MCP Inspector, but the same
+code path the Inspector or an agent would go through, since `@mcp.tool()`
+only registers the function and doesn't change how it runs.
 
 | # | Test | Result |
 |---|---|---|
-| 1 | `list_products` returns the full catalogue, trimmed | PASS — `count: 39`, each item carrying exactly the eight summary fields (no `description`, no `tags`). One discontinued product exists and is correctly excluded from the default listing (`/health` reports 40 total). |
-| 2 | `get_product_details` by SKU | PASS — full record returned, including the nested `supplier` object the list output doesn't carry |
-| 3 | `get_product_details` by numeric ID | PASS — same full record shape as test 2, confirming both identifier styles resolve through the same code path |
-| 4 | Unknown identifier | PASS — normal, successful tool result whose content is `{"error": "product_not_found", ...}`; not a protocol-level error |
-| 5 | Product API unreachable | PASS — with the Product API stopped, `list_products` returned `{"error": "product_api_unreachable", ...}` |
-| 6 | Product API returns 503 | PASS — `curl "http://localhost:5001/api/v1/products?force_error=true"` confirmed the API answers 503; `list_products` surfaces this as `{"error": "product_api_error", "status_code": 503}` |
+| 1 | `list_products` returns the full catalogue, trimmed | PASS — `count: 39` (one discontinued product excluded; `/health` reports 40 total, matching). First item: `{'id': 4, 'sku': 'HB-MON-2102', 'name': '24 inch Compact Monitor', 'category': 'Displays', 'brand': 'LabForge', 'unit_price': 169.99, 'currency': 'USD', 'discontinued': False}` — exactly the eight summary fields, no `description`/`tags`/`supplier`. |
+| 2 | `get_product_details` by numeric ID (`4`) | PASS — full record including `description`, `tags`, `weight_kg`, `updated_at`, and the nested `supplier` object (`SUP-LAB-002`, LabForge Supplies) that the list output doesn't carry. |
+| 3 | `get_product_details` by SKU (`HB-MON-2102`) | PASS — byte-for-byte the same record as test 2, confirming both identifier styles resolve through the same code path. |
+| 4 | Unknown identifier (`does-not-exist`) | PASS — `{"error": "product_not_found", "message": "No product found for identifier 'does-not-exist'."}`; a normal, successful tool result, not a protocol-level error. |
+| 5 | Empty identifier (`""`) | PASS — `{"error": "invalid_identifier", ...}`, rejected before any network call (confirmed no request was logged). |
+| 6 | Product API unreachable | PASS — container stopped (`docker compose stop`) in the middle of the test session; both `list_products()` and `get_product_details()` returned `{"error": "product_api_unreachable", "message": "Could not reach the Product API."}`. |
+| 7 | Product API returns 503 | PASS (via a local test double, not the real API — see note below) — `{"error": "product_api_error", "status_code": 503}`. |
 
-> Fill in exact SKU/ID values and add Inspector screenshots here if you want
-> a visual record alongside this table.
+Test 7 uses a test double rather than the real API's `force_error=true`
+because the tool deliberately never forwards arbitrary query parameters to
+the Product API (see "avoid exposing unnecessary Product API behavior" in
+the task brief) — there's no way to ask the real API for a 503 through the
+tool's actual parameter surface, which is itself a confirmation that the
+trimmed interface works as intended, not a gap in coverage. Confirmed
+independently that the real API does answer 503 to
+`curl "http://localhost:5001/api/v1/products?force_error=true"`.
 
 ## Design decisions
 
