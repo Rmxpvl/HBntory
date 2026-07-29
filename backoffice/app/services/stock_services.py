@@ -1,41 +1,32 @@
 #!/usr/bin/env python3
 
-import os
-
-import requests
-
-from ..models import Stock, Branch
-
-PRODUCT_API_URL = os.environ.get("PRODUCT_API_URL", "http://localhost:5001")
-
-
-def _product_exists_in_catalog(product_id):
-    try:
-        response = requests.get(
-            f"{PRODUCT_API_URL}/api/v1/products/{product_id}",
-            timeout=5,
-        )
-    except requests.RequestException as exc:
-        raise RuntimeError(
-            f"could not reach Product API to validate product {product_id}: {exc}"
-        )
-
-    if response.status_code == 404:
-        return False
-    response.raise_for_status()
-    return True
+from . import product_client
+from ..models import Branch, Stock
 
 
 def add_stock(db, branch_id, product_id, quantity):
-    _validate_stock_operation(db, branch_id, product_id, quantity)
+    _validate_stock_operation(
+        db,
+        branch_id,
+        product_id,
+        quantity,
+    )
 
     existing_stock = (
-        db.query(Stock).filter_by(branch_id=branch_id, product_id=product_id).first()
+        db.query(Stock)
+        .filter_by(
+            branch_id=branch_id,
+            product_id=product_id,
+        )
+        .first()
     )
 
     if existing_stock is None:
-        if not _product_exists_in_catalog(product_id):
-            raise ValueError(f"product {product_id} does not exist in the Product API")
+        if not product_client.product_exists(product_id):
+            raise ValueError(
+                f"product {product_id} does not exist in the Product API"
+            )
+
         existing_stock = Stock(
             branch_id=branch_id,
             product_id=product_id,
@@ -50,31 +41,90 @@ def add_stock(db, branch_id, product_id, quantity):
 
 
 def remove_stock(db, branch_id, product_id, quantity):
-    _validate_stock_operation(db, branch_id, product_id, quantity)
+    _validate_stock_operation(
+        db,
+        branch_id,
+        product_id,
+        quantity,
+    )
 
     existing_stock = (
-        db.query(Stock).filter_by(branch_id=branch_id, product_id=product_id).first()
+        db.query(Stock)
+        .filter_by(
+            branch_id=branch_id,
+            product_id=product_id,
+        )
+        .first()
     )
 
     if existing_stock is None:
         raise ValueError(
-            f"no stock for branch {branch_id} / product {product_id} to remove from"
+            f"no stock for branch {branch_id} / "
+            f"product {product_id} to remove from"
         )
 
     if existing_stock.quantity - quantity < 0:
         raise ValueError(
-            f"cannot remove {quantity} units: only {existing_stock.quantity} in stock"
+            f"cannot remove {quantity} units: "
+            f"only {existing_stock.quantity} in stock"
         )
 
     existing_stock.quantity -= quantity
+
     db.commit()
     return existing_stock
 
 
-def _validate_stock_operation(db, branch_id, product_id, quantity):
-    if not isinstance(quantity, int) or isinstance(quantity, bool) or quantity <= 0:
-        raise ValueError("quantity must be a positive integer")
-
+def get_quantity(db, branch_id, product_id):
+    """How many units of one product this branch holds."""
     branch = db.query(Branch).filter_by(branch_id=branch_id).first()
     if branch is None:
         raise ValueError(f"branch {branch_id} does not exist")
+
+    existing_stock = (
+        db.query(Stock).filter_by(branch_id=branch_id, product_id=product_id).first()
+    )
+    # No row simply means none of it. That is the answer 0, not an error:
+    # the user asked a legitimate question.
+    return 0 if existing_stock is None else existing_stock.quantity
+
+
+def list_branch_stock(db, branch_id):
+    """product_id and quantity for one branch. Product names are NOT joined
+    here; the page fetches those from the Product API through step 2."""
+    branch = db.query(Branch).filter_by(branch_id=branch_id).first()
+    if branch is None:
+        raise ValueError(f"branch {branch_id} does not exist")
+
+    # quantity > 0: a row that has been emptied is not "in stock"
+    rows = (
+        db.query(Stock)
+        .filter(Stock.branch_id == branch_id, Stock.quantity > 0)
+        .all()
+    )
+    return [{"product_id": r.product_id, "quantity": r.quantity} for r in rows]
+
+
+def _validate_stock_operation(
+    db,
+    branch_id,
+    product_id,
+    quantity,
+):
+    if (
+        not isinstance(quantity, int)
+        or isinstance(quantity, bool)
+        or quantity <= 0
+    ):
+        raise ValueError("quantity must be a positive integer")
+
+    branch = (
+        db.query(Branch)
+        .filter_by(branch_id=branch_id)
+        .first()
+    )
+
+    if branch is None:
+        raise ValueError(
+            f"branch {branch_id} does not exist"
+        )
