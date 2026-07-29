@@ -2,7 +2,7 @@
 
 import os
 
-from .db import Base, SessionLocal, engine
+from .db import SessionLocal
 from .models import Branch, Role, Stock, User, UserStatus
 from .auth.passwords import hash_password  # Task 2.2, done early — see PR description
 
@@ -38,15 +38,13 @@ def get_or_create_branch(db, localisation):
 
 
 def seed_database():
-    """Create the tables and insert the initial data."""
+    """Insert the initial data. Tables must already exist (run: alembic upgrade head)."""
     admin_password = os.environ.get("ADMIN_PASSWORD")
 
     if not admin_password:
         raise RuntimeError(
             "ADMIN_PASSWORD must be set before running seed.py"
         )
-
-    Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
 
