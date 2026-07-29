@@ -41,7 +41,7 @@ Décision d'authentification corrigée : **session cookie signée, HTTP-only, sa
 ## Task 2 — Authentication and Authorization
 
 - [ ] Login : vérification credentials, rejet des users soft-deleted/inactifs.
-- [ ] Hash des mots de passe avec **Argon2id** (déjà décidé dans l'architecture) — documenter pourquoi Argon2id > SHA256 seul (pas de salt/cost factor adapté, trop rapide donc vulnérable au brute-force).
+- [x] Hash des mots de passe avec **Argon2id** (déjà décidé dans l'architecture) — documenté (mécanisme, hashing, vérification, pourquoi SHA256 seul est insuffisant) dans `docs/password-security.md`.
 - [ ] Session cookie signée, HTTP-only, same-site à la connexion réussie.
 - [ ] Middleware/dépendance FastAPI qui recharge l'utilisateur à chaque requête protégée et vérifie : rôle, statut actif, branche.
 - [ ] Protection CSRF sur les routes state-changing (POST/PUT/DELETE).
