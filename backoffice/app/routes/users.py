@@ -66,4 +66,24 @@ def create(payload: UserCreate, db=Depends(get_db)):
 
     return {"user_id": user.user_id}
 
+@router.patch("/{user_id}")
+def update(
+    user_id: int,
+    payload: UserUpdate,
+    db=Depends(get_db),
+):
+    try:
+        user_services.update_user(
+            db,
+            user_id,
+            payload.username,
+            payload.branch_id,
+        )
+    except NotFoundError as exc:
+        raise HTTPException(404, str(exc))
+    except ConflictError as exc:
+        raise HTTPException(409, str(exc))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
+    return {"user_id": user_id}
