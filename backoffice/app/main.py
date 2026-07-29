@@ -4,6 +4,7 @@ from .auth.current_actor import Actor, get_current_actor
 from .dependencies import get_db
 from .models import Branch
 from .routes import stock, users
+from .services import product_client
 
 
 # Central FastAPI application for the HBntory Backoffice.
@@ -33,3 +34,11 @@ def current_user(
         "branch_id": actor.branch_id,
         "branch_name": branch.localisation if branch else None,
     }
+
+
+@app.get("/api/products")
+def products(
+    actor: Actor = Depends(get_current_actor),
+):
+    # Retrieve the complete catalogue from the external Product API.
+    return product_client.list_products()
