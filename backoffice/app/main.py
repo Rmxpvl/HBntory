@@ -42,3 +42,20 @@ def products(
 ):
     # Retrieve the complete catalogue from the external Product API.
     return product_client.list_products()
+
+
+@app.get("/api/branches")
+def branches(
+    actor: Actor = Depends(get_current_actor),
+    db=Depends(get_db),
+):
+    # Return every branch available in the local database.
+    branch_rows = db.query(Branch).order_by(Branch.branch_id).all()
+
+    return [
+        {
+            "branch_id": branch.branch_id,
+            "localisation": branch.localisation,
+        }
+        for branch in branch_rows
+    ]
