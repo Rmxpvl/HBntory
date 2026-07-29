@@ -6,7 +6,7 @@ from ..auth.sessions import MAX_AGE_SECONDS, create_session_token
 from ..dependencies import get_db
 from ..services.auth_services import authenticate_user
 
-router = APIRouter()
+router = APIRouter(prefix="/auth")
 
 
 class LoginRequest(BaseModel):

@@ -30,7 +30,7 @@ def test_correct_credentials_log_the_user_in(db):
     client = TestClient(app, base_url="https://testserver")
 
     response = client.post(
-        "/api/login",
+        "/api/auth/login",
         json={"username": "alice", "password": "correct horse"},
     )
 
@@ -43,7 +43,7 @@ def test_session_from_login_authenticates_later_requests(db):
     _make_user(db)
     client = TestClient(app, base_url="https://testserver")
     client.post(
-        "/api/login",
+        "/api/auth/login",
         json={"username": "alice", "password": "correct horse"},
     )
 
@@ -58,7 +58,7 @@ def test_wrong_password_is_rejected(db):
     client = TestClient(app, base_url="https://testserver")
 
     response = client.post(
-        "/api/login",
+        "/api/auth/login",
         json={"username": "alice", "password": "wrong"},
     )
 
@@ -70,7 +70,7 @@ def test_unknown_username_is_rejected(db):
     client = TestClient(app, base_url="https://testserver")
 
     response = client.post(
-        "/api/login",
+        "/api/auth/login",
         json={"username": "nobody", "password": "whatever"},
     )
 
@@ -82,7 +82,7 @@ def test_inactive_user_cannot_log_in(db):
     client = TestClient(app, base_url="https://testserver")
 
     response = client.post(
-        "/api/login",
+        "/api/auth/login",
         json={"username": "alice", "password": "correct horse"},
     )
 
@@ -93,11 +93,11 @@ def test_logout_clears_the_session(db):
     _make_user(db)
     client = TestClient(app, base_url="https://testserver")
     client.post(
-        "/api/login",
+        "/api/auth/login",
         json={"username": "alice", "password": "correct horse"},
     )
 
-    client.post("/api/logout")
+    client.post("/api/auth/logout")
     response = client.get("/api/auth/me")
 
     assert response.status_code == 401
