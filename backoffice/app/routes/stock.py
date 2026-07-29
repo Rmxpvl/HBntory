@@ -13,3 +13,28 @@ from ..models import Role
 from ..services import stock_services
 
 router = APIRouter(prefix="/stock")
+
+
+class StockChange(BaseModel):
+    # Reject unexpected information such as a browser-supplied branch_id.
+    model_config = ConfigDict(extra="forbid")
+
+    product_id: int = Field(gt=0)
+    quantity: StrictInt = Field(gt=0)
+
+    @field_validator("product_id", mode="before")
+    @classmethod
+    def parse_product_id(cls, value):
+        # True and False must not be accepted as product numbers.
+        if isinstance(value, bool):
+            raise ValueError("product_id must be a positive integer")
+
+        # Accept a normal Python integer.
+        if isinstance(value, int):
+            return value
+
+        # The HTML product selector sends values such as "12" as text.
+        if isinstance(value, str) and value.isdigit():
+            return int(value)
+
+        raise ValueError("product_id must be a positive integer")
