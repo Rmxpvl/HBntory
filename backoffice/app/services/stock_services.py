@@ -75,6 +75,36 @@ def remove_stock(db, branch_id, product_id, quantity):
     return existing_stock
 
 
+def get_quantity(db, branch_id, product_id):
+    """How many units of one product this branch holds."""
+    branch = db.query(Branch).filter_by(branch_id=branch_id).first()
+    if branch is None:
+        raise ValueError(f"branch {branch_id} does not exist")
+
+    existing_stock = (
+        db.query(Stock).filter_by(branch_id=branch_id, product_id=product_id).first()
+    )
+    # No row simply means none of it. That is the answer 0, not an error:
+    # the user asked a legitimate question.
+    return 0 if existing_stock is None else existing_stock.quantity
+
+
+def list_branch_stock(db, branch_id):
+    """product_id and quantity for one branch. Product names are NOT joined
+    here; the page fetches those from the Product API through step 2."""
+    branch = db.query(Branch).filter_by(branch_id=branch_id).first()
+    if branch is None:
+        raise ValueError(f"branch {branch_id} does not exist")
+
+    # quantity > 0: a row that has been emptied is not "in stock"
+    rows = (
+        db.query(Stock)
+        .filter(Stock.branch_id == branch_id, Stock.quantity > 0)
+        .all()
+    )
+    return [{"product_id": r.product_id, "quantity": r.quantity} for r in rows]
+
+
 def _validate_stock_operation(
     db,
     branch_id,
