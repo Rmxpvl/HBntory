@@ -44,3 +44,7 @@ class PasswordChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     password: str = Field(min_length=1)
+
+@router.get("")
+def list_all(db=Depends(get_db)):
+    return user_services.list_users(db)  # Role and status are already lowercase
