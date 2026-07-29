@@ -1,5 +1,8 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
+from .auth.current_actor import Actor, get_current_actor
+from .dependencies import get_db
+from .models import Branch
 from .routes import stock, users
 
 
@@ -9,3 +12,24 @@ app = FastAPI(title="HBntory Backoffice")
 # Make the stock and user routes available under /api.
 app.include_router(stock.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
+
+
+@app.get("/api/auth/me")
+def current_user(
+    actor: Actor = Depends(get_current_actor),
+    db=Depends(get_db),
+):
+    # Find the name of the common user’s assigned branch.
+    branch = (
+        db.query(Branch).filter_by(branch_id=actor.branch_id).first()
+        if actor.branch_id is not None
+        else None
+    )
+
+    return {
+        "user_id": actor.user_id,
+        "username": actor.username,
+        "role": actor.role.value.lower(),
+        "branch_id": actor.branch_id,
+        "branch_name": branch.localisation if branch else None,
+    }
