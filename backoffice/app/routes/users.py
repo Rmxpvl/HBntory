@@ -24,3 +24,23 @@ router = APIRouter(
     prefix="/users",
     dependencies=[Depends(require_admin)],
 )
+
+class UserCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+    branch_id: int = Field(gt=0)
+
+
+class UserUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(min_length=1)
+    branch_id: int = Field(gt=0)
+
+
+class PasswordChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password: str = Field(min_length=1)
