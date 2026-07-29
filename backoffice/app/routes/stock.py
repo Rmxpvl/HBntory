@@ -38,3 +38,15 @@ class StockChange(BaseModel):
             return int(value)
 
         raise ValueError("product_id must be a positive integer")
+
+def require_common(
+    actor: Actor = Depends(get_current_actor),
+) -> Actor:
+    # Only a common user assigned to a branch may manage stock.
+    if actor.role != Role.COMMON or actor.branch_id is None:
+        raise HTTPException(
+            status_code=403,
+            detail="common user with a branch required",
+        )
+
+    return actor
