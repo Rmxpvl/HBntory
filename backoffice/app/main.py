@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .auth.current_actor import Actor, get_current_actor
 from .dependencies import get_db
@@ -8,6 +11,9 @@ from .models import Branch
 from .routes import stock, users
 from .services import product_client
 
+
+# Locate the Backoffice frontend folder.
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 # Central FastAPI application for the HBntory Backoffice.
 app = FastAPI(title="HBntory Backoffice")
@@ -105,3 +111,13 @@ def branches(
         }
         for branch in branch_rows
     ]
+
+
+@app.get("/", include_in_schema=False)
+def login_page():
+    # Open the login page when the Backoffice address is visited.
+    return FileResponse(STATIC_DIR / "login.html")
+
+
+# Serve the HTML, CSS and JavaScript files after checking the API routes.
+app.mount("/", StaticFiles(directory=STATIC_DIR), name="frontend")
