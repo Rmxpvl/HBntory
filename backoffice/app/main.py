@@ -1,4 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .auth.current_actor import Actor, get_current_actor
@@ -21,11 +22,35 @@ async def api_error(
     _request: Request,
     exc: HTTPException,
 ):
-    # Return errors in the format expected by the frontend.
+    # Return backend errors in the format expected by the frontend.
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": str(exc.detail)},
         headers=exc.headers,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(
+    _request: Request,
+    exc: RequestValidationError,
+):
+    # Convert the first validation problem into a readable message.
+    first_error = exc.errors()[0] if exc.errors() else {}
+
+    field = ".".join(
+        str(part)
+        for part in first_error.get("loc", ())
+        if part != "body"
+    )
+
+    message = first_error.get("msg", "validation error")
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": f"invalid request: {field}: {message}",
+        },
     )
 
 
