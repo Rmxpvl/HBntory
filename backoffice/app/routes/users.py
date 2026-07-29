@@ -45,6 +45,25 @@ class PasswordChange(BaseModel):
 
     password: str = Field(min_length=1)
 
+
 @router.get("")
 def list_all(db=Depends(get_db)):
     return user_services.list_users(db)  # Role and status are already lowercase
+
+
+@router.post("")
+def create(payload: UserCreate, db=Depends(get_db)):
+    try:
+        user = user_services.create_common_user(
+            db, payload.username, payload.password, payload.branch_id
+        )
+    except NotFoundError as exc:
+        raise HTTPException(404, str(exc))  # The branch does not exist
+    except ConflictError as exc:
+        raise HTTPException(409, str(exc))  # The username is already used
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))  # Other invalid information
+
+    return {"user_id": user.user_id}
+
+
