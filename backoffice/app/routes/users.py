@@ -87,3 +87,26 @@ def update(
         raise HTTPException(400, str(exc))
 
     return {"user_id": user_id}
+
+@router.patch("/{user_id}/password")
+def set_password(
+    user_id: int,
+    payload: PasswordChange,
+    db=Depends(get_db),
+):
+    try:
+        user_services.change_password(
+            db,
+            user_id,
+            payload.password,
+        )
+    except NotFoundError as exc:
+        raise HTTPException(404, str(exc))
+    except ConflictError as exc:
+        raise HTTPException(409, str(exc))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+    return {"user_id": user_id}
+
+
