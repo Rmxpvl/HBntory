@@ -92,16 +92,16 @@ def products(
 
 @app.get("/api/branches")
 def branches(
-    actor: Actor = Depends(get_current_actor),
+    _actor: Actor = Depends(users.require_admin),
     db=Depends(get_db),
 ):
-    # Return every branch available in the local database.
+    # Return every branch in the format expected by the frontend.
     branch_rows = db.query(Branch).order_by(Branch.branch_id).all()
 
     return [
         {
             "branch_id": branch.branch_id,
-            "localisation": branch.localisation,
+            "name": branch.localisation,
         }
         for branch in branch_rows
     ]
