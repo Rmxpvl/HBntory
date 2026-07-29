@@ -5,7 +5,7 @@ function normalizeBaseUrl (url) {
 }
 
 export const BACKOFFICE_API_URL = normalizeBaseUrl(
-  runtimeConfig.BACKOFFICE_API_URL ?? 'http://localhost:5000/api'
+  runtimeConfig.BACKOFFICE_API_URL ?? '/api'
 );
 
 export const API_REQUEST_TIMEOUT_MS = Number(

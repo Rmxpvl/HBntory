@@ -21,3 +21,14 @@ def verify_password(plain, stored_hash):
         # Wrong password, corrupted hash and empty column all mean the same
         # thing to the caller: no. Never let the difference leak out.
         return False
+
+
+# A valid Argon2id hash of a password nobody will ever type. Verifying
+# against this when there's no real user keeps the response time close to a
+# genuine "wrong password" case, so callers like authenticate_user() can't be
+# timed to reveal whether a username exists.
+DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$OTKmPTSyll/XBz/R2/2Oxg$q/YqZWiRt/zchivODVA0elA7BtCfDxfKtWTwEJVoNxs"
+
+
+def verify_password_or_dummy(plain, stored_hash):
+    return verify_password(plain, stored_hash if stored_hash is not None else DUMMY_HASH)

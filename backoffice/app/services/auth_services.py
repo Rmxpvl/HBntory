@@ -1,36 +1,21 @@
 #!/usr/bin/env python3
 
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
-
+from ..auth.passwords import verify_password_or_dummy
 from ..models import User, UserStatus
-
-ph = PasswordHasher()
-
-# Hash Argon2 valide d'un mot de passe qui n'existe pas : utilise comme cible
-# de verify() quand le username est inconnu, pour que le temps de reponse
-# soit identique a un vrai echec de mot de passe (mitigation timing attack).
-_DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$OTKmPTSyll/XBz/R2/2Oxg$q/YqZWiRt/zchivODVA0elA7BtCfDxfKtWTwEJVoNxs"
 
 
 def authenticate_user(db, username, password):
-
     user = db.query(User).filter_by(username=username).first()
+    stored_hash = user.password_hash if user else None
 
-    if user:
-        hash_to_verify = user.password_hash
-    else:
-        hash_to_verify = _DUMMY_HASH
-
-    try:
-        ph.verify(hash_to_verify, password)
-    except (VerifyMismatchError, VerificationError, InvalidHashError):
+    # verify_password_or_dummy always runs a real Argon2 verify, against the
+    # user's hash or a fixed dummy one - so an unknown username takes the
+    # same time to reject as a wrong password (no timing-based user
+    # enumeration).
+    if not verify_password_or_dummy(password, stored_hash):
         raise ValueError("invalid credentials")
 
-    if user is None:
-        raise ValueError("invalid credentials")
-    
-    if user.status != UserStatus.ACTIVE:
+    if user is None or user.status != UserStatus.ACTIVE:
         raise ValueError("invalid credentials")
 
     return user
