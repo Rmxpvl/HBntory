@@ -5,4 +5,3 @@ requests==2.32.3
 fastapi==0.140.1
 uvicorn==0.51.0
 itsdangerous==2.2.0
-alembic==1.18.5

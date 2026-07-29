@@ -2,9 +2,10 @@
 
 import os
 
-from .db import SessionLocal
+from argon2 import PasswordHasher
+
+from .db import Base, SessionLocal, engine
 from .models import Branch, Role, Stock, User, UserStatus
-from .auth.passwords import hash_password  # Task 2.2, done early — see PR description
 
 
 BRANCH_LOCATIONS = (
@@ -38,13 +39,15 @@ def get_or_create_branch(db, localisation):
 
 
 def seed_database():
-    """Insert the initial data. Tables must already exist (run: alembic upgrade head)."""
+    """Create the tables and insert the initial data."""
     admin_password = os.environ.get("ADMIN_PASSWORD")
 
     if not admin_password:
         raise RuntimeError(
             "ADMIN_PASSWORD must be set before running seed.py"
         )
+
+    Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
 
@@ -61,9 +64,10 @@ def seed_database():
         )
 
         if existing_admin is None:
+            password_hasher = PasswordHasher()
             admin = User(
                 username="admin",
-                password_hash=hash_password(admin_password),  # was PasswordHasher().hash(...), now shared
+                password_hash=password_hasher.hash(admin_password),
                 role=Role.ADMIN,
                 status=UserStatus.ACTIVE,
             )
