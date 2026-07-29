@@ -40,26 +40,33 @@ never reaches the database and is not logged.
 `app/services/auth_services.py::authenticate_user(db, username, password)`:
 
 1. Looks up the user by username.
-2. If the username doesn't exist, verifies the submitted password against a
-   **fixed dummy Argon2id hash** instead of short-circuiting immediately. This
-   keeps the response time close to a real "wrong password" case, so an
-   attacker can't distinguish "no such user" from "wrong password" by timing
-   the response (a username-enumeration mitigation).
-3. Calls `PasswordHasher.verify(stored_hash, submitted_password)`, which
-   re-derives the hash with the same salt/parameters embedded in the stored
-   string and compares it in constant time. Any failure
-   (`VerifyMismatchError`, `VerificationError`, `InvalidHashError`) is caught
-   and turned into the same generic `ValueError("invalid credentials")` —
-   the caller never learns *why* it failed.
+2. Calls `verify_password_or_dummy(password, stored_hash)`
+   (`app/auth/passwords.py`) with `stored_hash=None` if the username doesn't
+   exist. That function always runs a real Argon2 verify — against the
+   user's hash, or against a **fixed dummy Argon2id hash** (`DUMMY_HASH`) when
+   there's no user — instead of short-circuiting immediately. This keeps the
+   response time close to a real "wrong password" case, so an attacker can't
+   distinguish "no such user" from "wrong password" by timing the response
+   (a username-enumeration mitigation).
+3. `verify_password_or_dummy` delegates to `verify_password`, which calls
+   `PasswordHasher.verify(stored_hash, submitted_password)` — re-deriving the
+   hash with the same salt/parameters embedded in the stored string and
+   comparing it. Any failure (`VerifyMismatchError`, `VerificationError`,
+   `InvalidHashError`) is caught and turned into `False`; `authenticate_user`
+   turns that into the generic `ValueError("invalid credentials")` — the
+   caller never learns *why* it failed.
 4. Rejects the user if `status != ACTIVE` (soft-deleted or deactivated
    accounts), again with the same generic error, after the password check has
    already run — so this check doesn't leak "this account exists but is
    disabled" through a faster response.
 
-`app/auth/passwords.py::verify_password(plain, stored_hash)` is a simpler,
-reusable version of the same verify step (no dummy-hash/timing handling),
-used where a caller already knows the account exists — e.g. `change_password`
-flows that re-check a user's current password.
+There is one shared `PasswordHasher()` instance for the whole app
+(`app/auth/passwords.py::_hasher`) — `hash_password`, `verify_password` and
+`verify_password_or_dummy` all go through it, so every caller (`seed.py`,
+`user_services.py`, `authenticate_user`) hashes and verifies the same way.
+`verify_password(plain, stored_hash)` is the plain version (no dummy-hash
+handling) for callers that already know the account exists — e.g.
+`change_password` flows that re-check a user's current password.
 
 ## Why plain SHA-256 (or MD5, SHA-1) is not sufficient
 
