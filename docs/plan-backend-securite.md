@@ -11,6 +11,8 @@ Ce document définit mon rôle dans le projet HBntory (Lead Backend), corrige la
 | IA / MCP | Personne 3 | Task 4 (MCP Server), Task 5 (AI Query Service, en dernier, optionnel — voir `mvp-definition.md` Phase 7) |
 | Task 7 (Intégration/Tests/README) | Tout le monde, chacun sur sa partie | Backend: tests + doc API + README backend |
 
+**Trou non résolu — backend de `client_web`** : "Personne 2" ci-dessus couvre "Client Web UI", c'est-à-dire le frontend de la page publique (`client_web/index.html` + `js/*.js`, actuellement vides). Mais `architecture_EN.md` (section "Public Client Service and Web Interface") décrit aussi un **petit backend REST** pour ce service — requêtes stock en lecture seule via SQLAlchemy, récupération des données produit via le Product MCP Server, service anonyme (pas d'auth, ne crée pas d'utilisateur, ne modifie pas le stock). Ce backend n'existe nulle part dans le repo et n'est assigné à personne dans ce tableau : ni moi (Backend/DB), ni Personne 3 (MCP), ni explicitement Personne 2. Touche à la fois la DB (mon domaine) et les tools MCP (Personne 3) — **à trancher en équipe**, pas une décision à prendre seul.
+
 Décision d'authentification corrigée : **session cookie signée, HTTP-only, same-site + protection CSRF sur les requêtes qui modifient l'état** (pas de JWT). Raison : cohérent avec l'architecture déjà écrite, invalidation immédiate d'un utilisateur soft-deleted plus simple qu'avec un JWT (pas de blocklist/refresh à gérer), et le Backoffice est une app browser classique, pas consommée par un client tiers.
 
 ## Task 1 — Database Design and Backoffice Foundation
