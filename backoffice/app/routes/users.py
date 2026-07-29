@@ -109,4 +109,15 @@ def set_password(
 
     return {"user_id": user_id}
 
+@router.delete("/{user_id}")
+def deactivate(user_id: int, db=Depends(get_db)):
+    try:
+        user_services.soft_delete_user(db, user_id)
+    except NotFoundError as exc:
+        raise HTTPException(404, str(exc))
+    except ConflictError as exc:
+        raise HTTPException(409, str(exc))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
+    return {"user_id": user_id}
