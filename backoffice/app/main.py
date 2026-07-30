@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from .auth.current_actor import Actor, get_current_actor
 from .dependencies import get_db
 from .models import Branch
-from .routes import auth, stock, users
+from .routes import auth, public, stock, users
 from .services import product_client
 
 
@@ -20,10 +20,11 @@ CLIENT_WEB_DIR = Path(__file__).resolve().parent.parent.parent / "client_web"
 # Central FastAPI application for the HBntory Backoffice.
 app = FastAPI(title="HBntory Backoffice")
 
-# Make the auth, stock and user routes available under /api.
+# Make the auth, stock, user and public (anonymous) routes available under /api.
 app.include_router(auth.router, prefix="/api")
 app.include_router(stock.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
+app.include_router(public.router, prefix="/api")
 
 
 @app.exception_handler(HTTPException)

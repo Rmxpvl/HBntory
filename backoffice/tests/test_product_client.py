@@ -38,3 +38,66 @@ def test_list_products_terminates_even_if_the_api_reports_limit_zero(monkeypatch
 
     assert len(result) == 3
     assert calls["count"] == 1
+
+
+def test_list_products_forwards_the_category_filter_to_the_api(monkeypatch):
+    seen_params = {}
+
+    def fake_get(url, params, timeout):
+        seen_params.update(params)
+        return _FakeResponse({"count": 0, "limit": 50, "results": []})
+
+    monkeypatch.setattr(product_client.requests, "get", fake_get)
+
+    product_client.list_products(category="Laptops")
+
+    assert seen_params["category"] == "Laptops"
+
+
+def test_list_products_omits_the_category_param_when_not_given(monkeypatch):
+    seen_params = {}
+
+    def fake_get(url, params, timeout):
+        seen_params.update(params)
+        return _FakeResponse({"count": 0, "limit": 50, "results": []})
+
+    monkeypatch.setattr(product_client.requests, "get", fake_get)
+
+    product_client.list_products()
+
+    assert "category" not in seen_params
+
+
+def test_list_products_forwards_the_search_query_to_the_api(monkeypatch):
+    seen_params = {}
+
+    def fake_get(url, params, timeout):
+        seen_params.update(params)
+        return _FakeResponse({"count": 0, "limit": 50, "results": []})
+
+    monkeypatch.setattr(product_client.requests, "get", fake_get)
+
+    product_client.list_products(q="keyboard")
+
+    assert seen_params["q"] == "keyboard"
+
+
+def test_list_categories_returns_names_and_counts(monkeypatch):
+    def fake_get(url, timeout):
+        assert url.endswith("/api/v1/categories")
+        return _FakeResponse({
+            "count": 2,
+            "results": [
+                {"name": "Laptops", "product_count": 2},
+                {"name": "Audio", "product_count": 1},
+            ],
+        })
+
+    monkeypatch.setattr(product_client.requests, "get", fake_get)
+
+    result = product_client.list_categories()
+
+    assert result == [
+        {"name": "Laptops", "product_count": 2},
+        {"name": "Audio", "product_count": 1},
+    ]
