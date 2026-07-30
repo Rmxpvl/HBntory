@@ -49,16 +49,20 @@ Set-Location backoffice
 $env:DATABASE_URL = "sqlite:///dev.db"
 $env:ADMIN_PASSWORD = "ChoisisTonMotDePasse123"
 $env:SESSION_SECRET_KEY = "dev-secret"
-python -c "from app.db import Base, engine; Base.metadata.create_all(bind=engine); from app.seed import seed_database; seed_database()"
+python -m app.seed
 ```
 
-Ça crée :
+`seed_database()` already calls `Base.metadata.create_all()` itself, so this
+one command both creates the tables (on a fresh `dev.db`) and inserts the
+initial data. It creates :
 - 1 compte admin (`admin` / le mot de passe choisi ci-dessus)
 - 3 branches (Annecy, Thonon-les-bains, Genève)
 - Du stock d'exemple
 
-Relance cette commande à tout moment pour réinitialiser (idempotent — ne
-duplique rien). Pour repartir totalement à zéro, supprime `dev.db` avant.
+Relance cette commande à tout moment pour **compléter** ce qui manquerait
+(idempotent — ne duplique rien, mais ne remplace pas non plus un mot de
+passe ou un stock déjà existant). Pour repartir totalement à zéro, supprime
+`dev.db` avant de relancer.
 
 ## Étape 4 — Lancer le serveur
 
@@ -77,6 +81,29 @@ http://localhost:5000/
 ```
 
 Connecte-toi avec `admin` / le mot de passe choisi à l'étape 3.
+
+## Étape 6 — Lancer le Product MCP Server (optionnel)
+
+Ce service est indépendant du Backoffice — voir
+[`product_mcp_server/README.md`](../product_mcp_server/README.md) pour le
+détail complet (tools, gestion d'erreurs, preuves de test). Commandes
+essentielles, dans un nouveau terminal, depuis la racine du repo :
+
+```powershell
+Set-Location product_mcp_server
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python server.py
+```
+
+L'API Produit externe (étape 1) doit déjà tourner. Aucune variable
+d'environnement à définir pour ce setup local : `PRODUCT_API_BASE_URL` vaut
+déjà `http://localhost:5001` par défaut. Le serveur MCP écoute ensuite sur :
+
+```text
+http://127.0.0.1:8000/mcp
+```
 
 ---
 
