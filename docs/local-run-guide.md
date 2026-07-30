@@ -129,9 +129,9 @@ cd backoffice
 python -m pytest tests/ -v
 ```
 
-24 tests couvrant login/session, mots de passe, et les règles
-d'autorisation admin/common — aucune dépendance externe (base SQLite en
-mémoire).
+31 tests couvrant login/session, mots de passe, règles d'autorisation
+admin/common, et quelques cas de concurrence — aucune dépendance externe
+(base SQLite dans un fichier temporaire, recréée à chaque test).
 
 ## Problèmes fréquents
 
@@ -140,3 +140,4 @@ mémoire).
 | "Impossible de contacter le serveur" dans le navigateur | Le serveur n'est pas lancé, ou tourne sur un port différent de celui attendu par l'URL ouverte |
 | Les noms de produits n'apparaissent pas dans la page stock | L'API Produit externe (`docker compose up -d`, étape 1) n'est pas lancée |
 | `ADMIN_PASSWORD must be set before running seed.py` | La variable d'environnement `$env:ADMIN_PASSWORD` n'est pas définie dans le terminal courant |
+| La connexion boucle silencieusement en accédant via une IP du réseau local (`http://192.168.x.x:5000`) ou dans Safari | Le cookie de session est marqué `Secure` par défaut (nécessite HTTPS ou `localhost`). Lance le serveur avec `$env:COOKIE_SECURE = "false"` pour tester dans ces cas-là |
