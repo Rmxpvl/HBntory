@@ -31,7 +31,7 @@ Décision d'authentification corrigée : **session cookie signée, HTTP-only, sa
   - [x] 3 branches (Annecy, Thonon-les-bains, Genève).
   - [x] Stock d'exemple par branche, suffisant pour tester. Testé end-to-end en SQLite.
   - [x] Idempotent (vérifie l'existant avant chaque insert).
-- [ ] Migration Alembic initiale — **pas encore fait**, on utilise seulement `Base.metadata.create_all()` pour l'instant. À faire avant une vraie mise en prod / Task 7.
+- [x] Stratégie d'initialisation : `Base.metadata.create_all()` + `app/seed.py` (idempotent). Alembic écarté volontairement, hors périmètre pour ce projet. Limite assumée : `create_all()` ne crée que les tables manquantes et ne modifie pas une table existante, donc un changement de `models.py` impose de supprimer et recréer la base.
 - [x] Validation métier stock (Task 4) — `app/services/stock_services.py`, testée end-to-end en SQLite (API Produit mockée) :
   - [x] quantité entière positive obligatoire (`_validate_stock_operation`, partagée par add/remove).
   - [x] branche valide vérifiée avant toute opération.

@@ -9,7 +9,7 @@ Deliver a secure inventory Backoffice plus an anonymous, deterministic product-a
 - API Gateway as the single HTTP entry point, routing requests to the Backoffice by path and forwarding headers/cookies unchanged (no authentication or business logic in the Gateway).
 - PostgreSQL configuration.
 - SQLAlchemy models for users, branches and stock.
-- Alembic initial migration.
+- Database initialization via Base.metadata.create_all() and an idempotent seed script (no Alembic).
 - Exactly one `admin` account.
 - At least two branches and sample stock.
 - Argon2id password hashing.
