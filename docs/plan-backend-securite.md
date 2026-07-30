@@ -108,7 +108,7 @@ Chaque endpoint : valide l'entrée, applique le RBAC en backend (pas seulement c
 
 ## Task 7 — Ma part (tests, sécurité, doc, README)
 
-- [x] Tests backend automatisés (modèles, validation stock, auth, RBAC) — `backoffice/tests/`, 40 tests.
+- [x] Tests backend automatisés (modèles, validation stock, auth, RBAC) — `backoffice/tests/`, 58 tests.
 - [x] Tests sécurité ciblés :
   - [x] injection via product_id / paramètres stock — Pydantic (`StrictInt`, rejet des booléens comme entiers, `extra="forbid"`).
   - [x] IDOR (accès stock d'une autre branche via manipulation d'ID) — `test_stock_operations_ignore_a_client_supplied_branch_id`.
