@@ -3,7 +3,7 @@
 **This document has been corrected to describe what was actually built.**
 Several entries in the original decision table (API Gateway, Client
 Service querying the database, AI Query Service) described components that
-were excluded from the final scope — see `architecture_EN.md` for the full
+were excluded from the final scope — see `architecture.md` for the full
 explanation.
 
 ## Decision Summary (as delivered)

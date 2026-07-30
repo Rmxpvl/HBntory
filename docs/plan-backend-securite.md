@@ -1,6 +1,6 @@
 # Plan d'action — Backend / Sécurité / Base de données
 
-Ce document définit mon rôle dans le projet HBntory (Lead Backend), corrige la répartition initiale (session cookie au lieu de JWT, pour rester cohérent avec `architecture_EN.md` et `communication-strategies.md`), et sert de checklist de suivi.
+Ce document définit mon rôle dans le projet HBntory (Lead Backend), corrige la répartition initiale (session cookie au lieu de JWT, pour rester cohérent avec `architecture.md` et `communication-strategies.md`), et sert de checklist de suivi.
 
 ## Répartition d'équipe (résumé corrigé)
 
@@ -11,7 +11,7 @@ Ce document définit mon rôle dans le projet HBntory (Lead Backend), corrige la
 | IA / MCP | Personne 3 | Task 4 (MCP Server) uniquement |
 | Task 7 (Intégration/Tests/README) | Tout le monde, chacun sur sa partie | Backend: tests + doc API + README backend |
 
-**Task 5 (AI Query Service) et Task 6 (Client Web Interface) : hors périmètre**, décision actée avec le responsable du projet — on ne les fait pas. Ancienne note ("trou non résolu — backend de `client_web`") retirée : elle partait d'une lecture de `architecture_EN.md`/`mvp-definition.md` (docs internes d'architecture) plutôt que de l'énoncé officiel des tâches. En relisant le vrai texte de Task 5/6 : c'est l'AI Query Service (Task 5, jamais construit) qui devait se connecter au MCP server et gérer l'accès au stock (au choix : étendre le MCP server, un DB MCP tool, ou une API interne) — pas `client_web` (Task 6), qui n'aurait été qu'une page appelant l'endpoint de Task 5. Comme Task 5/6 ne se font pas, `client_web/` a été reconstruit en catalogue produits public fonctionnel (recherche par mot-clé + filtre catégorie, `GET /api/public/products` et `GET /api/public/categories`, anonymes) plutôt que laissé en squelette lié à une IA inexistante — voir `client_web/README.md`.
+**Task 5 (AI Query Service) et Task 6 (Client Web Interface) : hors périmètre**, décision actée avec le responsable du projet — on ne les fait pas. Ancienne note ("trou non résolu — backend de `client_web`") retirée : elle partait d'une lecture de `architecture.md`/`mvp-definition.md` (docs internes d'architecture) plutôt que de l'énoncé officiel des tâches. En relisant le vrai texte de Task 5/6 : c'est l'AI Query Service (Task 5, jamais construit) qui devait se connecter au MCP server et gérer l'accès au stock (au choix : étendre le MCP server, un DB MCP tool, ou une API interne) — pas `client_web` (Task 6), qui n'aurait été qu'une page appelant l'endpoint de Task 5. Comme Task 5/6 ne se font pas, `client_web/` a été reconstruit en catalogue produits public fonctionnel (recherche par mot-clé + filtre catégorie, `GET /api/public/products` et `GET /api/public/categories`, anonymes) plutôt que laissé en squelette lié à une IA inexistante — voir `client_web/README.md`.
 
 Conséquence pour Task 4 (MCP Server, déjà fait et vérifié) : il n'aura pas de vrai consommateur (l'AI agent qui devait l'utiliser ne sera pas construit) — à mentionner clairement dans le README/la présentation finale comme un choix de périmètre assumé, pas un oubli.
 
@@ -120,5 +120,5 @@ Chaque endpoint : valide l'entrée, applique le RBAC en backend (pas seulement c
 
 ## Notes de cohérence avec les docs existants
 
-- [x] `architecture_FR.md`/`architecture_EN.md`/`mvp-definition.md`/`initial-service-diagram.md`/`communication-strategies.md` réalignés sur le système réellement livré (pas d'API Gateway, pas d'AI Query Service, catalogue public sans MCP ni accès DB).
+- [x] `architecture.md`/`architecture.md`/`mvp-definition.md`/`initial-service-diagram.md`/`communication-strategies.md` réalignés sur le système réellement livré (pas d'API Gateway, pas d'AI Query Service, catalogue public sans MCP ni accès DB).
 - Ne pas réintroduire JWT dans le code ou les specs d'API sans rediscuter et remettre à jour `communication-strategies.md`.

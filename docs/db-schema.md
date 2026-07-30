@@ -2,9 +2,9 @@
 
 ## 1. Portée
 
-Le schéma ci-dessous a été conçu pour PostgreSQL, mais **la base réellement livrée et testée est SQLite** (voir `architecture_EN.md`, section "Known limitations") — les mêmes modèles SQLAlchemy s'appliquent aux deux, sans changement de code. Elle contient exactement trois tables : `users`, `branches` et `stocks`. Aucune autre table n'est ajoutée : pas de table produit locale, pas de table de configuration ou d'audit — ces besoins ne sont pas requis par le projet à ce stade.
+Le schéma ci-dessous a été conçu pour PostgreSQL, mais **la base réellement livrée et testée est SQLite** (voir `architecture.md`, section "Known limitations") — les mêmes modèles SQLAlchemy s'appliquent aux deux, sans changement de code. Elle contient exactement trois tables : `users`, `branches` et `stocks`. Aucune autre table n'est ajoutée : pas de table produit locale, pas de table de configuration ou d'audit — ces besoins ne sont pas requis par le projet à ce stade.
 
-Conformément à l'architecture (`architecture_FR.md`), les informations produit (nom, description, prix, image) ne sont **jamais** stockées en local. Seul l'identifiant numérique externe du produit apparaît, dans `stocks`.
+Conformément à l'architecture (`architecture.md`), les informations produit (nom, description, prix, image) ne sont **jamais** stockées en local. Seul l'identifiant numérique externe du produit apparaît, dans `stocks`.
 
 ## 2. Table `users`
 

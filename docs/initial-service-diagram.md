@@ -1,7 +1,7 @@
 # HBntory — Service Diagram (as delivered)
 
 **This replaces the original planning diagram** — see `mvp-definition.md`
-for that original plan and `architecture_EN.md` for the full explanation
+for that original plan and `architecture.md` for the full explanation
 of what changed and why.
 
 ![HBntory delivered service diagram: a single Backoffice service serves both authenticated pages and the public catalogue directly, with no gateway; the Product MCP Server is independent and has no consumer](./initial-service-diagram.svg)

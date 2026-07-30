@@ -1,7 +1,7 @@
 # HBntory — Minimum Viable Product
 
 **This is the original plan, kept for historical context.** See
-`architecture_EN.md` for what was actually delivered. Two phases below
+`architecture.md` for what was actually delivered. Two phases below
 (1's API Gateway, and all of Phase 7) were excluded from the final scope
 by agreement with the project supervisor — marked inline below.
 
@@ -12,7 +12,7 @@ Deliver a secure inventory Backoffice plus an anonymous, deterministic product-a
 ## Phase 1 — Database and Backoffice Foundation
 
 - ~~API Gateway as the single HTTP entry point~~ **Excluded from final scope.** The Backoffice is the single service; it serves the authenticated pages and the public catalogue directly, with no gateway in front.
-- ~~PostgreSQL configuration.~~ **Delivered on SQLite instead** — the documented, tested local database. PostgreSQL was explored but is not the delivered path; see `architecture_EN.md`, "Known limitations".
+- ~~PostgreSQL configuration.~~ **Delivered on SQLite instead** — the documented, tested local database. PostgreSQL was explored but is not the delivered path; see `architecture.md`, "Known limitations".
 - SQLAlchemy models for users, branches and stock.
 - Database initialization via Base.metadata.create_all() and an idempotent seed script (no Alembic).
 - Exactly one `admin` account.
@@ -62,7 +62,7 @@ Common users can, only for their assigned branch:
 ## Phase 5 — Public Client Web Interface
 
 **Delivered differently from this original plan** — see
-`architecture_EN.md` Section 5 for what was built instead and why.
+`architecture.md` Section 5 for what was built instead and why.
 
 - Anonymous page in `client_web/`. Delivered.
 - ~~Reached through the API Gateway, same as the Backoffice.~~ Served
