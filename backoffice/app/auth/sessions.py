@@ -13,8 +13,8 @@ def _serializer():
     return URLSafeTimedSerializer(secret_key, salt="hbntory-session")
 
 
-def create_session_token(user_id):
-    return _serializer().dumps(user_id)
+def create_session_token(user_id, token_version):
+    return _serializer().dumps({"user_id": user_id, "token_version": token_version})
 
 
 def read_session_token(token):

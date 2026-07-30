@@ -37,6 +37,10 @@ class User(Base):
     branch_id = Column(Integer, ForeignKey("branches.branch_id", ondelete ="RESTRICT"), nullable=True)
     status = Column(SAEnum(UserStatus, values_callable=lambda enum_cls: [e.value for e in enum_cls]), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    # Bumped on logout so every session cookie issued before that point stops
+    # being accepted, even though the cookie itself is a stateless signed
+    # token with no server-side session table.
+    token_version = Column(Integer, nullable=False, server_default="0", default=0)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
