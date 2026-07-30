@@ -26,15 +26,20 @@ export function setButtonBusy (button, busy, busyLabel = 'Chargement…') {
     return;
   }
 
+  // Write to the .button__label span when present, so a busy/idle cycle
+  // doesn't wipe out that child element - overwriting the button's own
+  // textContent would destroy it and any styling that targets it.
+  const labelElement = button.querySelector('.button__label') ?? button;
+
   if (busy) {
-    button.dataset.originalLabel = button.textContent.trim();
-    button.textContent = busyLabel;
+    button.dataset.originalLabel = labelElement.textContent.trim();
+    labelElement.textContent = busyLabel;
     button.disabled = true;
     button.setAttribute('aria-busy', 'true');
     return;
   }
 
-  button.textContent = button.dataset.originalLabel ?? button.textContent;
+  labelElement.textContent = button.dataset.originalLabel ?? labelElement.textContent;
   button.disabled = false;
   button.removeAttribute('aria-busy');
   delete button.dataset.originalLabel;
