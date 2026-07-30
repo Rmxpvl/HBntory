@@ -1,9 +1,12 @@
 # Faire tourner HBntory en local — guide pas à pas
 
 Ce guide couvre le Backoffice (login, gestion de stock, gestion des
-utilisateurs) et l'API Produit externe dont il dépend. `client_web` et
-l'IA ne sont pas couverts : abandonnés d'un commun accord avec le
-responsable du projet (voir `docs/plan-backend-securite.md`).
+utilisateurs), le catalogue produits public (`client_web`, servi par la
+même application) et l'API Produit externe dont ils dépendent tous les
+deux. Seule l'IA (AI Query Service, Task 5/6) n'est pas couverte :
+exclue d'un commun accord avec le responsable du projet (voir
+`docs/plan-backend-securite.md`) — `client_web` a été reconstruit en
+catalogue fonctionnel sans dépendance IA, voir `client_web/README.md`.
 
 ## Prérequis
 
@@ -64,6 +67,14 @@ Relance cette commande à tout moment pour **compléter** ce qui manquerait
 passe ou un stock déjà existant). Pour repartir totalement à zéro, supprime
 `dev.db` avant de relancer.
 
+> **Mise à niveau ponctuelle si `dev.db` existait déjà avant l'ajout de
+> `token_version`** (colonne utilisée pour la révocation de session au
+> logout) : `Base.metadata.create_all()` crée les tables **manquantes**,
+> il ne modifie pas une table déjà existante. Un `dev.db` créé avec un
+> schéma plus ancien n'aura pas cette colonne, et le serveur plantera au
+> premier login. Supprime `dev.db` et relance `python -m app.seed` — les
+> bases existantes ne sont pas modifiées automatiquement.
+
 ## Étape 4 — Lancer le serveur
 
 Toujours dans `backoffice/`, avec les mêmes variables d'environnement actives :
@@ -76,11 +87,13 @@ Laisse ce terminal ouvert (`Ctrl+C` pour arrêter).
 
 ## Étape 5 — Ouvrir la page dans le navigateur
 
-```
-http://localhost:5000/
+```text
+http://localhost:5000/        catalogue produits public (accueil, aucun compte requis)
+http://localhost:5000/login   connexion au Backoffice
 ```
 
-Connecte-toi avec `admin` / le mot de passe choisi à l'étape 3.
+Sur `/login`, connecte-toi avec `admin` / le mot de passe choisi à
+l'étape 3 (ou un compte common créé ensuite par l'admin).
 
 ## Étape 6 — Lancer le Product MCP Server (optionnel)
 
@@ -111,8 +124,19 @@ http://127.0.0.1:8000/mcp
 
 ## Se connecter
 
-La page de connexion (`/`) redirige automatiquement vers le bon tableau de
-bord selon le rôle du compte utilisé — admin ou common.
+Va sur `/login`. Une fois connecté, tu es redirigé automatiquement vers le
+bon tableau de bord selon le rôle du compte utilisé — admin ou common.
+(`/` reste la page catalogue publique, accessible sans connexion.)
+
+## Catalogue produits public (`/`, sans connexion)
+
+- **Rechercher** un produit par mot-clé (nom, référence).
+- **Filtrer** par catégorie (menu déroulant, rempli depuis l'API Produit).
+- Les résultats ne s'affichent qu'après une recherche explicite (le
+  catalogue ne liste pas tout par défaut à l'ouverture de la page).
+- N'affiche ni le stock ni la disponibilité par agence — uniquement les
+  informations produit (nom, catégorie, marque, prix), obtenues en direct
+  depuis l'API Produit externe.
 
 ## En tant qu'admin — gestion des utilisateurs
 
@@ -156,9 +180,14 @@ cd backoffice
 python -m pytest tests/ -v
 ```
 
-31 tests couvrant login/session, mots de passe, règles d'autorisation
-admin/common, et quelques cas de concurrence — aucune dépendance externe
-(base SQLite dans un fichier temporaire, recréée à chaque test).
+58 tests — login/session (dont la révocation immédiate au logout et le
+cookie `Secure` configurable), mots de passe, règles d'autorisation
+admin/common, opérations de stock et gestion des utilisateurs (succès et
+cas limites : retrait supérieur au stock, produit inconnu, conflits de
+nom d'utilisateur, changement de mot de passe, soft-delete), le seed
+(création + reruns idempotents), les routes publiques du catalogue, et la
+pagination/le filtrage côté client Product API — aucune dépendance
+externe (base SQLite dans un fichier temporaire, recréée à chaque test).
 
 ## Problèmes fréquents
 

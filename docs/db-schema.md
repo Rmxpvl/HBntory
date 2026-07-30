@@ -17,6 +17,7 @@ Conformément à l'architecture (`architecture.md`), les informations produit (n
 | `branch_id` | entier | clé étrangère → `branches.branch_id` (`ON DELETE RESTRICT`), nullable |
 | `status` | énumération (`Active` \| `Inactive`) | `NOT NULL`, aucune valeur par défaut au niveau base — doit être fournie explicitement à la création |
 | `deleted_at` | horodatage (avec fuseau) | nullable — `NULL` tant que le compte n'est pas soft-supprimé, rempli à la date de suppression logique sinon |
+| `token_version` | entier | `NOT NULL`, défaut `0` |
 | `created_at` | horodatage (avec fuseau) | `NOT NULL`, valeur posée par PostgreSQL (`server_default=now()`) |
 | `updated_at` | horodatage (avec fuseau) | `NOT NULL`, posée et rafraîchie par PostgreSQL (`server_default`/`onupdate=now()`) |
 
@@ -38,6 +39,7 @@ CHECK (status != 'Active' OR deleted_at IS NULL)
 - `deleted_at` : soft-delete au sens strict — un utilisateur supprimé n'est jamais retiré physiquement de la table, cette colonne porte la date de suppression. Son historique (créations de stock, etc.) reste traçable. La contrainte `CHECK (status != 'Active' OR deleted_at IS NULL)` empêche l'état incohérent "compte actif mais marqué supprimé", indépendamment de tout bug applicatif.
 - `role` et `status` utilisent tous deux `SAEnum(..., values_callable=...)` côté SQLAlchemy : par défaut, `sqlalchemy.Enum` persiste le `.name` du membre Python (`'ADMIN'`, `'ACTIVE'`) plutôt que son `.value` (`'Admin'`, `'Active'`). Sans ce paramètre, les `CHECK` ci-dessus (qui comparent aux valeurs `'Admin'`/`'Active'`) ne matcheraient jamais la valeur réellement stockée — bug silencieux constaté et corrigé pendant l'implémentation (vérifié par insertion de test + lecture SQL brute).
 - `created_at`/`updated_at` : traçabilité, calculées côté PostgreSQL (`server_default`) plutôt que côté Python, pour rester correctes même en cas d'insertion hors du chemin applicatif habituel (script SQL direct, migration de données).
+- `token_version` : compteur utilisé pour la révocation de session au logout. La valeur courante est incluse dans le cookie de session signé à la connexion ; chaque requête protégée compare la valeur du cookie à celle stockée en base. Le logout incrémente `token_version`, ce qui invalide immédiatement **tous** les cookies déjà émis pour cet utilisateur (pas seulement celui du navigateur qui se déconnecte), sans avoir besoin d'une table de sessions séparée.
 
 ### Règle : admin non assigné à la gestion de stock
 

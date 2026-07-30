@@ -175,21 +175,31 @@ Parcours complet, sans captures d'écran :
 [`docs/local-run-guide.md`](docs/local-run-guide.md), section "Guide
 d'utilisation".
 
-### 8. Statut de l'interface Client Web publique
+### 8. Comment accéder au catalogue produits public et l'utiliser
+
+Ouvre `http://localhost:5000/` — aucun compte requis. Depuis cette page :
+
+- **Rechercher** un produit par mot-clé (nom, référence) dans la case de
+  recherche.
+- **Filtrer** par catégorie via le menu déroulant (rempli depuis l'API
+  Produit externe).
+- Les résultats ne s'affichent qu'après une recherche explicite — la
+  page ne liste pas tout le catalogue par défaut à l'ouverture.
+- Un bouton "Se connecter" en haut de la page mène vers `/login`
+  (Backoffice).
 
 **Construite et fonctionnelle, mais avec un périmètre réduit par rapport
 au plan initial.** `client_web/` est un vrai catalogue produits
-fonctionnel : recherche par mot-clé, filtre par catégorie, parcours des
-résultats — servi par l'application Backoffice sur `/`, aucun compte
-requis.
-
-Elle **n'affiche pas** le stock ni la disponibilité par agence, et
-**n'appelle pas** le serveur MCP Produit — c'était le plan initial (une
-case de question en langage naturel adossée à un AI Query Service), mais
-comme l'AI Query Service est hors périmètre, il n'y a rien à appeler pour
-une telle case de question. Plutôt que de livrer une page sans IA
+fonctionnel, servi par l'application Backoffice sur `/`. Elle **n'affiche
+pas** le stock ni la disponibilité par agence (uniquement les
+informations produit : nom, catégorie, marque, prix), et **n'appelle
+pas** le serveur MCP Produit — c'était le plan initial (une case de
+question en langage naturel adossée à un AI Query Service), mais comme
+l'AI Query Service est hors périmètre, il n'y a rien à appeler pour une
+telle case de question. Plutôt que de livrer une page sans IA
 fonctionnelle derrière, elle a été reconstruite autour d'une recherche
-simple, fonctionnelle, façon magasin en ligne.
+simple, fonctionnelle, façon magasin en ligne. Détail :
+[`client_web/README.md`](client_web/README.md).
 
 ### 9. Principales décisions techniques
 
@@ -430,19 +440,28 @@ Full walkthrough with screenshots-free step descriptions:
 [`docs/local-run-guide.md`](docs/local-run-guide.md), "Guide
 d'utilisation" section.
 
-### 8. Status of the public Client Web Interface
+### 8. How to access and use the public product catalogue
+
+Open `http://localhost:5000/` — no account needed. From that page:
+
+- **Search** for a product by keyword (name, reference) in the search box.
+- **Filter** by category via the dropdown (populated from the external
+  Product API).
+- Results only appear after an explicit search — the page doesn't list
+  the whole catalogue by default on load.
+- A "Se connecter" button at the top of the page leads to `/login`
+  (Backoffice).
 
 **Built and working, but scoped down from the original plan.** `client_web/`
-is a real, functional product catalogue: search by keyword, filter by
-category, browse results — served by the Backoffice app at `/`, no
-account needed.
-
-It does **not** show stock or branch availability, and does **not** call
+is a real, functional product catalogue, served by the Backoffice app at
+`/`. It does **not** show stock or branch availability (product
+information only: name, category, brand, price), and does **not** call
 the Product MCP Server — that was the original plan (a natural-language
 question box backed by an AI Query Service), but since the AI Query
 Service is excluded from scope, there is nothing for a question box to
 call. Rather than ship a page with no working AI behind it, it was rebuilt
-around a plain, working online-store-style search instead.
+around a plain, working online-store-style search instead. Detail:
+[`client_web/README.md`](client_web/README.md).
 
 ### 9. Main technical decisions
 
