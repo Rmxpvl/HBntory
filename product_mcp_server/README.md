@@ -1,9 +1,10 @@
 # Product MCP Server
 
-Read-only bridge between the AI agent (Task 5) and the external Product API.
-The server holds no state and no cache: every request it receives is forwarded
-to the Product API and the answer is handed back reshaped for the agent. It
-never touches PostgreSQL and knows nothing about stock, branches, or users.
+Independent, read-only MCP bridge to the external Product API. The server
+holds no state and no cache: every request it receives is forwarded to the
+Product API and the answer is handed back reshaped for whichever MCP client
+calls it. It never touches the database and knows nothing about stock,
+branches, or users.
 
 ## Running it
 
@@ -97,7 +98,7 @@ independently that the real API does answer 503 to
 
 ## What's next
 
-Task 5 (AI Query Service) connects an agent to these two tools over the same
-Streamable HTTP endpoint and combines them with a read-only stock path.
-Nothing in `server.py` changes for that — the tool and error contracts above
-stay as they are.
+The two MCP tools are complete and independently verified against the
+external Product API. No consuming AI service was built, in accordance with
+the agreed final scope (Task 5, AI Query Service, is excluded from this
+project).
