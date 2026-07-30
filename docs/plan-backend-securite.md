@@ -15,7 +15,7 @@ Ce document définit mon rôle dans le projet HBntory (Lead Backend), corrige la
 
 Conséquence pour Task 4 (MCP Server, déjà fait et vérifié) : il n'aura pas de vrai consommateur (l'AI agent qui devait l'utiliser ne sera pas construit) — à mentionner clairement dans le README/la présentation finale comme un choix de périmètre assumé, pas un oubli.
 
-Décision d'authentification corrigée : **session cookie signée, HTTP-only, same-site + protection CSRF sur les requêtes qui modifient l'état** (pas de JWT). Raison : cohérent avec l'architecture déjà écrite, invalidation immédiate d'un utilisateur soft-deleted plus simple qu'avec un JWT (pas de blocklist/refresh à gérer), et le Backoffice est une app browser classique, pas consommée par un client tiers.
+Décision d'authentification corrigée : **session cookie signée, HTTP-only, SameSite=Lax** (pas de JWT). `SameSite=Lax` atténue les soumissions de formulaire cross-site classiques, mais **aucun token CSRF explicite n'est implémenté** — limitation connue, détaillée plus bas. Raison du choix : cohérent avec l'architecture déjà écrite, invalidation immédiate d'un utilisateur soft-deleted plus simple qu'avec un JWT (pas de blocklist/refresh à gérer), et le Backoffice est une app browser classique, pas consommée par un client tiers.
 
 ## Task 1 — Database Design and Backoffice Foundation
 
@@ -39,7 +39,7 @@ Décision d'authentification corrigée : **session cookie signée, HTTP-only, sa
   - [x] `remove_stock` : rejette si la ligne n'existe pas, rejette si la quantité à retirer dépasse le stock disponible.
   - [x] product_id validé contre le Product API externe (`GET {PRODUCT_API_URL}/api/v1/products/{id}`) **uniquement à la création d'une nouvelle ligne** — pas re-vérifié à chaque réapprovisionnement d'une ligne déjà existante (décision assumée : le produit a déjà été validé une fois).
   - [x] ~~Point d'attention SKU vs Integer~~ — **résolu, pas un problème** : la vraie API Produit a un `id` entier (1 à 40) et un champ `sku` texte séparé. `Stock.product_id` en `Integer` correspond au bon champ (`id`), pas au `sku`. Vérifié contre l'API réelle.
-  - [x] Tests automatisés (pytest) — `backoffice/tests/`, 40 tests, aucune dépendance externe (SQLite en fichier temporaire).
+  - [x] Tests automatisés (pytest) — `backoffice/tests/`, 58 tests, aucune dépendance externe (SQLite en fichier temporaire).
 - [x] Documenter le schéma (`docs/db-schema.md`) + justification des choix, tenu à jour à chaque changement.
 
 ## Task 2 — Authentication and Authorization
@@ -108,7 +108,7 @@ Chaque endpoint : valide l'entrée, applique le RBAC en backend (pas seulement c
 
 ## Task 7 — Ma part (tests, sécurité, doc, README)
 
-- [x] Tests backend automatisés (modèles, validation stock, auth, RBAC) — `backoffice/tests/`, 40 tests.
+- [x] Tests backend automatisés (modèles, validation stock, auth, RBAC) — `backoffice/tests/`, 58 tests.
 - [x] Tests sécurité ciblés :
   - [x] injection via product_id / paramètres stock — Pydantic (`StrictInt`, rejet des booléens comme entiers, `extra="forbid"`).
   - [x] IDOR (accès stock d'une autre branche via manipulation d'ID) — `test_stock_operations_ignore_a_client_supplied_branch_id`.
@@ -120,5 +120,5 @@ Chaque endpoint : valide l'entrée, applique le RBAC en backend (pas seulement c
 
 ## Notes de cohérence avec les docs existants
 
-- [x] `architecture.md`/`architecture.md`/`mvp-definition.md`/`initial-service-diagram.md`/`communication-strategies.md` réalignés sur le système réellement livré (pas d'API Gateway, pas d'AI Query Service, catalogue public sans MCP ni accès DB).
+- [x] `architecture.md`/`mvp-definition.md`/`initial-service-diagram.md`/`communication-strategies.md` réalignés sur le système réellement livré (pas d'API Gateway, pas d'AI Query Service, catalogue public sans MCP ni accès DB).
 - Ne pas réintroduire JWT dans le code ou les specs d'API sans rediscuter et remettre à jour `communication-strategies.md`.

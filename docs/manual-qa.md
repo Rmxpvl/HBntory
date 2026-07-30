@@ -11,9 +11,10 @@ via `uvicorn` and real HTTP requests — not just `TestClient`/pytest, except
 where noted.
 
 Automated coverage: `backoffice/tests/`, 58 tests, run with
-`python -m pytest tests/ -v`. This document covers the same critical flows
-manually/end-to-end, against real running services, as a second, independent
-verification.
+`python -m pytest tests/ -v`. This document combines two kinds of evidence:
+manual end-to-end checks against real running services (sections 1, 2, 6, 7)
+and automated test evidence from the suite above (sections 3, 4, 5, 8). Each
+section states which one applies to it.
 
 **AI scenarios: excluded from scope**, not tested — no AI Query Service
 exists in this project (agreed with the project supervisor).
