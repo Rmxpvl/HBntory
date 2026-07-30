@@ -1,0 +1,243 @@
+# HBntory
+
+An inventory Backoffice for a company with several physical branches, plus
+a public product catalogue. Built as a school project (Holberton).
+
+**Read this first:** this README describes only what was actually built
+and verified. Where the original plan included something that isn't here
+(an API Gateway, an AI Query Service, a PostgreSQL deployment), that's
+called out explicitly rather than left ambiguous — see
+["Agreed final scope"](#agreed-final-scope) below.
+
+## Table of contents
+
+1. [Project overview](#1-project-overview)
+2. [Team members and responsibilities](#2-team-members-and-responsibilities)
+3. [Final architecture summary](#3-final-architecture-summary)
+4. [Prerequisites and installation](#4-prerequisites-and-installation)
+5. [How to run each delivered service](#5-how-to-run-each-delivered-service)
+6. [How to initialise the database](#6-how-to-initialise-the-database)
+7. [How to access and use the Backoffice](#7-how-to-access-and-use-the-backoffice)
+8. [Status of the public Client Web Interface](#8-status-of-the-public-client-web-interface)
+9. [Main technical decisions](#9-main-technical-decisions)
+10. [Known limitations and trade-offs](#10-known-limitations-and-trade-offs)
+11. [Optional features implemented](#11-optional-features-implemented)
+
+## Agreed final scope
+
+Two parts of the original plan were excluded by agreement with the project
+supervisor, and are **not** part of this delivery:
+
+- **The AI Query Service** (natural-language question answering) — not
+  built. Nothing in this project answers a question in natural language.
+- **The API Gateway** (a single routing entry point in front of separate
+  Backoffice/Client services) — not built. The Backoffice is one FastAPI
+  service; it serves both the authenticated pages and the public catalogue
+  directly.
+
+Everything else described in this README exists and has been run and
+verified — see the "Manual QA" evidence linked in Section 5.
+
+## 1. Project overview
+
+HBntory lets:
+
+- an **admin** user manage common-user accounts (create, edit, change
+  password, soft-delete) from a Backoffice UI;
+- a **common** user manage stock (add, remove, list, search) for the one
+  branch they're assigned to;
+- an **anonymous** visitor browse a public product catalogue (search by
+  keyword, filter by category) with no account needed.
+
+Product information (name, price, category, description) always comes
+from an external, supplied Product API — HBntory never stores or invents
+product details locally, only a numeric product ID and a quantity per
+branch.
+
+An independent **Product MCP Server** also exists, exposing the product
+catalogue as MCP tools. It is complete and independently verified, but has
+no consumer in this delivery (see "Agreed final scope" above).
+
+## 2. Team members and responsibilities
+
+| Member | Responsibility |
+| --- | --- |
+| Rémy Pinville | Lead Backend / Security / Database — schema design, authentication & authorization, Backoffice REST endpoints, tests, documentation |
+| Nicolas J | Frontend — Backoffice UI (login, stock, user management pages) |
+| Aleksandre Loladze | Product MCP Server |
+
+See [`docs/plan-backend-securite.md`](docs/plan-backend-securite.md) for
+the detailed, task-by-task breakdown and status.
+
+## 3. Final architecture summary
+
+```
+Internal browser ──┐
+                    ├──▶ Backoffice (FastAPI) ──▶ SQLite (users, branches, stocks)
+Public browser  ────┘                       └──▶ External Product API (read-only)
+
+Product MCP Server ──▶ External Product API (read-only)
+   (independent, no consumer in this project)
+```
+
+One FastAPI service (`backoffice/`) serves everything reachable by a
+browser: the authenticated pages (`/login`, `/stock`, `/users`) and the
+public catalogue page (`/`, backed by `client_web/`) — there is no gateway
+in front of it, and no separate service for the public page. Both the
+authenticated and public sides call the external Product API through the
+same code (`app/services/product_client.py`); the public side never
+touches the database.
+
+Full detail, data flow diagrams, and the security rules that back this up:
+[`docs/architecture_EN.md`](docs/architecture_EN.md) (or
+[`docs/architecture_FR.md`](docs/architecture_FR.md)) and
+[`docs/backoffice-ui-approach.md`](docs/backoffice-ui-approach.md).
+
+## 4. Prerequisites and installation
+
+- Python 3.11+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (only
+  needed to run the external Product API and, optionally, the Product MCP
+  Server's dependency on it)
+- A terminal (examples below use PowerShell; bash works too with the
+  obvious syntax changes)
+
+```powershell
+git clone <this repository>
+cd HBntory
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r backoffice\requirements.txt
+```
+
+## 5. How to run each delivered service
+
+Full step-by-step instructions, in French, with a troubleshooting table
+for the exact problems we actually hit while setting this up:
+**[`docs/local-run-guide.md`](docs/local-run-guide.md)**.
+
+Summary of what exists and how to start it:
+
+| Service | What it is | How to run it |
+| --- | --- | --- |
+| External Product API | Supplied, third-party, read-only product catalogue | `git clone https://github.com/hbtn-edu/hbntory-products-api.git` then `docker compose up -d --build` from that folder |
+| Backoffice | The main app: authenticated pages + public catalogue | `python -m uvicorn app.main:app --port 5000` from `backoffice/`, after seeding (Section 6) |
+| Product MCP Server | Independent MCP bridge to the Product API (no consumer in this project) | `python server.py` from `product_mcp_server/`, after `pip install -r requirements.txt` — see [`product_mcp_server/README.md`](product_mcp_server/README.md) |
+
+Manual QA evidence for the full delivered flow (Product API health check,
+Backoffice login, stock operations, user management, MCP tool calls):
+[`docs/manual-qa.md`](docs/manual-qa.md).
+
+## 6. How to initialise the database
+
+From `backoffice/`, with `DATABASE_URL`, `ADMIN_PASSWORD` and
+`SESSION_SECRET_KEY` set (see `docs/local-run-guide.md` Step 3 for exact
+commands):
+
+```powershell
+python -m app.seed
+```
+
+This creates the tables (`Base.metadata.create_all()`, no migration tool)
+and inserts one `admin` account (password from `ADMIN_PASSWORD`), three
+branches, and sample stock. It's idempotent: re-running it fills in
+anything missing without duplicating rows or resetting an existing
+password.
+
+## 7. How to access and use the Backoffice
+
+Once seeded and running (Sections 5–6), open `http://localhost:5000/` —
+this is the public catalogue page. Click "Se connecter" (or go directly to
+`/login`) to reach the Backoffice login.
+
+- **admin** account: log in, list/create/edit/soft-delete common users,
+  change their password or branch. Cannot manage stock (enforced
+  server-side, not just hidden in the UI).
+- **common** account: log in, see your assigned branch, add/remove stock,
+  search what's currently in stock. Cannot manage users, and cannot act on
+  any branch other than your own (the branch always comes from your
+  session, never from the page).
+
+Full walkthrough with screenshots-free step descriptions:
+[`docs/local-run-guide.md`](docs/local-run-guide.md), "Guide
+d'utilisation" section.
+
+## 8. Status of the public Client Web Interface
+
+**Built and working, but scoped down from the original plan.** `client_web/`
+is a real, functional product catalogue: search by keyword, filter by
+category, browse results — served by the Backoffice app at `/`, no
+account needed.
+
+It does **not** show stock or branch availability, and does **not** call
+the Product MCP Server — that was the original plan (a natural-language
+question box backed by an AI Query Service), but since the AI Query
+Service is excluded from scope, there is nothing for a question box to
+call. Rather than ship a page with no working AI behind it, it was rebuilt
+around a plain, working online-store-style search instead.
+
+## 9. Main technical decisions
+
+- **Session cookie, not JWT.** Signed, `HttpOnly`, `SameSite=Lax`. Chosen
+  over JWT because immediate revocation of a soft-deleted user is simpler
+  (no blocklist/refresh-token machinery needed), and the Backoffice is a
+  classic browser app, not consumed by a third-party client.
+- **Real server-side logout**, not just cookie deletion. A `token_version`
+  counter on `User` is embedded in the signed cookie and checked on every
+  request; logout increments it, so every cookie previously issued for
+  that user — not only the one in the browser that logged out — stops
+  working immediately.
+- **Argon2id** for password hashing, with a fixed dummy hash used when a
+  username doesn't exist, so login timing doesn't leak which usernames are
+  real. Full write-up: [`docs/password-security.md`](docs/password-security.md).
+- **RBAC enforced server-side**, never only by hiding a button: `admin`
+  is rejected on stock routes, `common` is rejected on user-management
+  routes, and a common user's branch always comes from their session, never
+  from the request body.
+- **SQLite, not PostgreSQL**, for the delivered/documented setup — see
+  Section 10.
+- **`Base.metadata.create_all()`, not Alembic.** Evaluated and deliberately
+  not adopted; see Section 10.
+- **The public catalogue reuses the Backoffice's existing Product API
+  client** (`product_client.py`) instead of building a separate service
+  that calls the MCP server and queries the database — simpler, and the
+  catalogue never needs stock data in the first place.
+
+## 10. Known limitations and trade-offs
+
+- **PostgreSQL is not the delivered database.** The schema
+  (`docs/db-schema.md`) was originally designed for it, but the
+  documented, tested local setup uses SQLite exclusively. An earlier
+  PostgreSQL Docker Compose file and the `psycopg2-binary` dependency were
+  removed rather than left as an undocumented, unverified path.
+- **No explicit CSRF token.** `SameSite=Lax` mitigates ordinary
+  cross-site form submissions, but state-changing requests have no CSRF
+  token. Documented as a known limitation, not implemented.
+- **No login rate limiting.** Not required by the task brief, not built.
+- **`create_all()` can't alter an existing table.** A schema change
+  requires dropping and recreating the local database — there is no
+  migration path. (Alembic was set up and evaluated during development,
+  then deliberately removed — the project settled on `create_all()`, and
+  keeping an unused, half-wired migration tool around was more confusing
+  than having none.)
+- **The stock quantity increment/decrement is a read-then-write, not an
+  atomic SQL update.** Concurrent add/remove requests on the exact same
+  (branch, product) row could, in theory, lose an update under real
+  concurrency. Concurrent-insert and concurrent-username races are handled
+  (converted to clean 400/409 responses instead of crashing); this
+  narrower race is not.
+- **The Product MCP Server has no consumer.** Complete and independently
+  verified against the real Product API, but nothing in this project calls
+  it, since the AI Query Service that was meant to was excluded from
+  scope.
+
+## 11. Optional features implemented
+
+- **Category filter and free-text search** on the public catalogue, beyond
+  a single search box — the external Product API supports both
+  (`category=`, `q=`), so both are exposed.
+- **Real server-side session revocation** (Section 9) — stronger than a
+  purely stateless signed-token approach, which the task brief would have
+  allowed.
+- **Timing-safe login** against username enumeration (Section 9), beyond
+  what a minimal Argon2id check would require.
