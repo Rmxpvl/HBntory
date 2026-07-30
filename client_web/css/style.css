@@ -101,6 +101,12 @@
   box-shadow: var(--shadow-md);
 }
 
+.catalogue-filters__form > .button {
+  /* The button has no label above it like the two form fields do, so
+     without this it sits too close to the category select. */
+  margin-top: 1cm;
+}
+
 .catalogue-filters__form {
   display: grid;
   grid-template-columns: 2fr 1fr auto;
