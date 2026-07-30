@@ -92,8 +92,10 @@ function initializePublicClient () {
   form.addEventListener('submit', handleSubmit);
   retryButton.addEventListener('click', loadProducts);
 
+  // Categories populate the filter dropdown up front, but the product
+  // list only loads once the visitor actually searches - no default
+  // "browse everything" listing on page load.
   loadCategories();
-  loadProducts();
 }
 
 initializePublicClient();
