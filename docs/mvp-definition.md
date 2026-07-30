@@ -1,15 +1,20 @@
 # HBntory — Minimum Viable Product
 
+**This is the original plan, kept for historical context.** See
+`architecture.md` for what was actually delivered. Two phases below
+(1's API Gateway, and all of Phase 7) were excluded from the final scope
+by agreement with the project supervisor — marked inline below.
+
 ## MVP Goal
 
-Deliver a secure inventory Backoffice plus an anonymous, deterministic product-and-stock search interface, both reached through a single API Gateway entry point. Product details come from the supplied API through the appropriate integration path; stock remains in PostgreSQL. The AI Query Service is scheduled as the final phase and built last, once the deterministic foundation is stable — it is deferred, not dropped.
+Deliver a secure inventory Backoffice plus an anonymous, deterministic product-and-stock search interface. Product details come from the supplied API through the appropriate integration path; stock remains in the local database. ~~The AI Query Service is scheduled as the final phase~~ **Excluded from final scope — see Phase 7.**
 
-## Phase 1 — Database, Backoffice and API Gateway Foundation
+## Phase 1 — Database and Backoffice Foundation
 
-- API Gateway as the single HTTP entry point, routing requests to the Backoffice by path and forwarding headers/cookies unchanged (no authentication or business logic in the Gateway).
-- PostgreSQL configuration.
+- ~~API Gateway as the single HTTP entry point~~ **Excluded from final scope.** The Backoffice is the single service; it serves the authenticated pages and the public catalogue directly, with no gateway in front.
+- ~~PostgreSQL configuration.~~ **Delivered on SQLite instead** — the documented, tested local database. PostgreSQL was explored but is not the delivered path; see `architecture.md`, "Known limitations".
 - SQLAlchemy models for users, branches and stock.
-- Alembic initial migration.
+- Database initialization via Base.metadata.create_all() and an idempotent seed script (no Alembic).
 - Exactly one `admin` account.
 - At least two branches and sample stock.
 - Argon2id password hashing.
@@ -56,16 +61,28 @@ Common users can, only for their assigned branch:
 
 ## Phase 5 — Public Client Web Interface
 
-- Anonymous page in `client_web/`.
-- Reached through the API Gateway, same as the Backoffice.
-- Search-box interface using REST rather than WebSockets.
-- Product catalogue search and product-detail display.
-- Branch availability and quantity display.
-- Products-in-branch listing.
-- Product data obtained through MCP tools.
-- Stock obtained through controlled, read-only database queries.
-- Independent requests with no saved history.
-- Deterministic answers first; AI-generated answers are added in Phase 7.
+**Delivered differently from this original plan** — see
+`architecture.md` Section 5 for what was built instead and why.
+
+- Anonymous page in `client_web/`. Delivered.
+- ~~Reached through the API Gateway, same as the Backoffice.~~ Served
+  directly by the Backoffice app, no gateway.
+- Search-box interface using REST rather than WebSockets. Delivered:
+  keyword search + category filter.
+- Product catalogue search. Delivered. ~~Product-detail display~~,
+  ~~branch availability and quantity display~~, ~~products-in-branch
+  listing~~ — not built: the delivered catalogue shows product data only,
+  not stock or branch availability (stock is Backoffice-authenticated
+  data, deliberately not exposed anonymously).
+- ~~Product data obtained through MCP tools.~~ Delivered via the
+  Backoffice's own `product_client.py` (direct REST to the Product API)
+  instead — simpler, and the MCP server wasn't needed for a page with no
+  AI agent behind it.
+- ~~Stock obtained through controlled, read-only database queries.~~ Not
+  built — the delivered catalogue never touches the database.
+- Independent requests with no saved history. Delivered.
+- ~~Deterministic answers first; AI-generated answers are added in Phase
+  7.~~ Phase 7 excluded; this is the final state, not a first step.
 
 ## Phase 6 — Integration and QA
 
@@ -75,17 +92,21 @@ Common users can, only for their assigned branch:
 - Manual QA checklist.
 - Documented startup and testing commands.
 
-## Phase 7 — AI Query Service (final phase)
+## Phase 7 — AI Query Service — EXCLUDED FROM FINAL SCOPE
 
-- Independent AI Query Service, separate from the Backoffice.
-- One or more AI agents connected to the Product MCP Server tools.
-- Controlled, read-only access to stock (through the MCP server or a narrow internal API).
-- Grounded answers only: no invented product names, details, stock or branch availability.
-- Clear "information unavailable" responses when tools return nothing.
-- A REST query endpoint the Client Web Interface calls with a single question.
-- Supported question types documented (product details, product availability across branches, products in a branch, shopping-list branch recommendation).
+**Not built, by agreement with the project supervisor.** Nothing in this
+list exists in the delivered project: no AI Query Service, no AI agent, no
+natural-language question answering anywhere. The Product MCP Server
+(Phase 4) was still built and verified on its own — it simply has no
+consumer in the delivered system. Kept below for historical record only.
 
-This phase is built last, after Phases 1–6 are stable.
+- ~~Independent AI Query Service, separate from the Backoffice.~~
+- ~~One or more AI agents connected to the Product MCP Server tools.~~
+- ~~Controlled, read-only access to stock (through the MCP server or a narrow internal API).~~
+- ~~Grounded answers only: no invented product names, details, stock or branch availability.~~
+- ~~Clear "information unavailable" responses when tools return nothing.~~
+- ~~A REST query endpoint the Client Web Interface calls with a single question.~~
+- ~~Supported question types documented (product details, product availability across branches, products in a branch, shopping-list branch recommendation).~~
 
 ## Optional Features Only If Time Remains
 
@@ -105,21 +126,21 @@ This phase is built last, after Phases 1–6 are stable.
 - Permanent storage of product details.
 - Analytics dashboards.
 
-## Acceptance Criteria
+## Acceptance Criteria (as delivered)
 
 - The project starts from documented commands on a clean machine.
-- The API Gateway routes every request to the Backoffice or the Client Web Interface and returns a clear HTTP error (`404`/`502`/`503`/`504`) when a downstream service cannot answer.
+- ~~The API Gateway routes every request...~~ Not applicable — no gateway; the Backoffice serves both the authenticated pages and the public catalogue directly.
 - Exactly one active administrator named `admin` exists.
 - Passwords are stored only as Argon2id hashes.
 - A common user always has exactly one branch.
 - Cross-branch requests are rejected by the backend.
 - `admin` manages users but cannot manage stock.
-- Soft-deleted users cannot authenticate or retain access.
+- Soft-deleted users cannot authenticate or retain access, including an already-open session.
 - Invalid quantities, branches and products are rejected.
 - Stock cannot become negative at application or database level.
 - Product details are absent from the local schema.
-- MCP tools list products and return product details.
+- MCP tools list products and return product details, verified against the real external Product API.
 - The anonymous public client uses REST and cannot change data.
 - Product API failures produce clear errors.
-- The AI Query Service (final phase) answers supported product and stock questions from real data and clearly states when information is unavailable.
-- Mandatory flows pass automated tests and the manual QA checklist.
+- ~~The AI Query Service answers supported product and stock questions...~~ Excluded from final scope — no AI Query Service exists.
+- Mandatory flows pass automated tests (`backoffice/tests/`) and manual QA (`docs/manual-qa.md`).

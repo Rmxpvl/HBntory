@@ -10,16 +10,16 @@
 
     <meta
         name="description"
-        content="Recherchez les produits et les stocks disponibles avec HBntory"
+        content="Parcourez le catalogue de produits HBntory par catégorie ou par recherche"
     >
 
-    <title>Recherche de produits | HBntory</title>
+    <title>Catalogue produits | HBntory</title>
 
-    <link rel="stylesheet" href="./css/variables.css">
-    <link rel="stylesheet" href="./css/base.css">
-    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="/client-web/css/variables.css">
+    <link rel="stylesheet" href="/client-web/css/base.css">
+    <link rel="stylesheet" href="/client-web/css/style.css">
 
-    <script type="module" src="./js/app.js" defer></script>
+    <script type="module" src="/client-web/js/app.js" defer></script>
 </head>
 
 <body class="public-page">
@@ -27,7 +27,7 @@
     <header class="public-header">
         <a
             class="public-header__brand"
-            href="./index.html"
+            href="/"
             aria-label="Accueil HBntory"
         >
             <span class="public-header__logo" aria-hidden="true">
@@ -38,6 +38,10 @@
                 HBntory
             </span>
         </a>
+
+        <a class="button button--secondary" href="/login">
+            Se connecter
+        </a>
     </header>
 
     <main class="public-main">
@@ -45,71 +49,69 @@
         <!-- Introduction -->
         <section
             class="query-hero"
-            aria-labelledby="query-page-title"
+            aria-labelledby="catalogue-title"
         >
             <p class="query-hero__eyebrow">
-                Recherche intelligente
+                Catalogue
             </p>
 
-            <h1 id="query-page-title">
-                Que recherchez-vous ?
+            <h1 id="catalogue-title">
+                Parcourez nos produits
             </h1>
 
             <p class="query-hero__description">
-                Interrogez les produits et les stocks disponibles.
+                Recherchez un produit par nom, ou filtrez par catégorie.
             </p>
         </section>
 
-        <!-- Formulaire de question -->
+        <!-- Filtres -->
         <section
-            class="query-section"
-            aria-labelledby="query-form-title"
+            class="catalogue-filters"
+            aria-labelledby="catalogue-filters-title"
         >
-            <h2 id="query-form-title" class="sr-only">
-                Poser une question
+            <h2 id="catalogue-filters-title" class="sr-only">
+                Filtrer le catalogue
             </h2>
 
-            <form id="query-form" class="query-form">
+            <form id="catalogue-form" class="catalogue-filters__form">
 
                 <div class="form-field">
                     <label
                         class="form-field__label"
-                        for="question"
+                        for="search-input"
                     >
-                        Votre question
+                        Rechercher un produit
                     </label>
 
-                    <textarea
-                        id="question"
-                        class="query-form__input"
-                        name="question"
-                        rows="3"
-                        minlength="3"
-                        maxlength="1000"
-                        placeholder="Exemple : Dans quel magasin puis-je trouver 1 laptop  ?"
-                        required
-                        aria-describedby="question-help question-error"
-                    ></textarea>
-
-                    <div class="query-form__counter">
-                        <p aria-live="polite">
-                            <span id="question-character-count">0</span>
-                            / 1000
-                        </p>
-                    </div>
-
-                    <p
-                        id="question-error"
-                        class="form-field__error"
-                        role="alert"
-                        hidden
+                    <input
+                        id="search-input"
+                        class="form-field__input"
+                        type="search"
+                        name="q"
+                        maxlength="200"
+                        placeholder="Nom, référence, mot-clé…"
                     >
-                        Saisissez une question avant de lancer la recherche.
-                    </p>
+                </div>
+
+                <div class="form-field">
+                    <label
+                        class="form-field__label"
+                        for="category-select"
+                    >
+                        Catégorie
+                    </label>
+
+                    <select
+                        id="category-select"
+                        class="form-field__input"
+                        name="category"
+                    >
+                        <option value="">Toutes les catégories</option>
+                    </select>
                 </div>
 
                 <button
-                    id="query-submit"
+                    id="catalogue-submit"
                     class="button button--primary button--large"
                     type="submit"
                 >
@@ -118,57 +120,13 @@
             </form>
         </section>
 
-        <!-- Exemples de questions -->
-        <section
-            class="query-examples"
-            aria-labelledby="query-examples-title"
-        >
-            <h2 id="query-examples-title">
-                Exemples de questions
-            </h2>
-
-            <div class="query-examples__list">
-                <button
-                    class="query-example"
-                    type="button"
-                    data-question="Donne-moi les détails du produit USB-C Teaching Dock."
-                >
-                    Détails du USB-C Teaching Dock
-                </button>
-
-                <button
-                    class="query-example"
-                    type="button"
-                    data-question="Quels produits sont disponibles dans le magasin de Annecy ?"
-                >
-                    Produits dispo à Annecy
-                </button>
-
-                <button
-                    class="query-example"
-                    type="button"
-                    data-question="Dans quel magasin je peux trouver un Laptop ?"
-                >
-                    Trouver un Laptop
-                </button>
-
-                <button
-                    class="query-example"
-                    type="button"
-                    data-question="Où puis-je acheter 3 USB-C Teaching Dock et 2 Laptop ?"
-                >
-                    Préparer une liste
-                </button>
-            </div>
-        </section>
-
         <!-- Chargement -->
         <section
-            id="query-loading"
+            id="catalogue-loading"
             class="query-result query-result--loading"
             role="status"
             aria-live="polite"
-            aria-labelledby="query-loading-title"
+            aria-labelledby="catalogue-loading-title"
             hidden
         >
             <div
@@ -177,35 +135,35 @@
             ></div>
 
             <div>
-                <h2 id="query-loading-title">
-                    Recherche en cours
+                <h2 id="catalogue-loading-title">
+                    Chargement du catalogue
                 </h2>
 
                 <p>
-                    Nous consultons les informations produit et les stocks…
+                    Nous consultons le catalogue de produits…
                 </p>
             </div>
         </section>
 
         <!-- Erreur -->
         <section
-            id="query-error"
+            id="catalogue-error"
             class="query-result query-result--error"
             role="alert"
             aria-live="assertive"
-            aria-labelledby="query-error-title"
+            aria-labelledby="catalogue-error-title"
             hidden
         >
-            <h2 id="query-error-title">
-                Impossible d’obtenir une réponse
+            <h2 id="catalogue-error-title">
+                Impossible de charger le catalogue
             </h2>
 
-            <p id="query-error-message">
+            <p id="catalogue-error-message">
                 Le service est temporairement indisponible.
             </p>
 
             <button
-                id="retry-query-button"
+                id="retry-catalogue-button"
                 class="button button--secondary"
                 type="button"
             >
@@ -213,45 +171,24 @@
             </button>
         </section>
 
-        <!-- Réponse de l’IA -->
+        <!-- Aucun résultat -->
         <section
-            id="query-result"
-            class="query-result query-result--success"
-            aria-labelledby="query-result-title"
+            id="catalogue-empty"
+            class="catalogue-empty"
             hidden
         >
-            <header class="query-result__header">
-                <p class="query-result__eyebrow">
-                    Résultat
-                </p>
+            <p>
+                Aucun produit ne correspond à cette recherche.
+            </p>
+        </section>
 
-                <h2 id="query-result-title">
-                    Réponse
-                </h2>
-            </header>
+        <!-- Résultats -->
+        <section aria-labelledby="catalogue-results-title">
+            <h2 id="catalogue-results-title" class="sr-only">
+                Résultats
+            </h2>
 
-            <article class="query-answer">
-                <p
-                    id="query-answer"
-                    class="query-answer__content"
-                    tabindex="-1"
-                ></p>
-            </article>
-
-            <footer class="query-result__footer">
-                <p>
-                    Réponse fondée sur les informations disponibles
-                    au moment de la requête.
-                </p>
-
-                <button
-                    id="new-query-button"
-                    class="button button--secondary"
-                    type="button"
-                >
-                    Poser une autre question
-                </button>
-            </footer>
+            <ul id="product-grid" class="product-grid"></ul>
         </section>
 
     </main>

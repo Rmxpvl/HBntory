@@ -1,118 +1,76 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="900" viewBox="0 0 1240 900" role="img" aria-labelledby="title description">
-  <title id="title">HBntory service architecture</title>
-  <desc id="description">A single API Gateway routes both internal and public browser traffic to the Backoffice or the Public Client Service, over PostgreSQL, the Product MCP Server and the External Product API. The AI Query Service is added as the final phase, shown with dashed connections, and reuses the same MCP tools and read-only stock access.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="640" viewBox="0 0 1000 640" role="img" aria-labelledby="title description">
+  <title id="title">HBntory delivered service architecture</title>
+  <desc id="description">Internal and public browsers both reach the single Backoffice service directly, with no API Gateway. The Backoffice reads and writes SQLite and calls the external Product API. The Product MCP Server is independent, also calls the external Product API, but has no consumer in this project since the AI Query Service was excluded from scope.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L0,6 L9,3 z" fill="#334155"/>
     </marker>
-    <marker id="arrow-ai" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#6366f1"/>
+    <marker id="arrow-muted" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8"/>
     </marker>
     <style>
-      .title { font: 700 28px Arial, sans-serif; fill: #0f172a; }
-      .subtitle { font: 16px Arial, sans-serif; fill: #475569; }
-      .section { font: 700 15px Arial, sans-serif; fill: #334155; letter-spacing: 1px; }
-      .box-title { font: 700 18px Arial, sans-serif; fill: #0f172a; }
-      .box-text { font: 14px Arial, sans-serif; fill: #334155; }
+      .title { font: 700 26px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 15px Arial, sans-serif; fill: #475569; }
+      .box-title { font: 700 17px Arial, sans-serif; fill: #0f172a; }
+      .box-text { font: 13px Arial, sans-serif; fill: #334155; }
       .edge { fill: none; stroke: #334155; stroke-width: 2.2; marker-end: url(#arrow); }
-      .edge-label { font: 600 13px Arial, sans-serif; fill: #334155; }
-      .edge-ai { fill: none; stroke: #6366f1; stroke-width: 2.2; stroke-dasharray: 7 5; marker-end: url(#arrow-ai); }
-      .edge-label-ai { font: 600 13px Arial, sans-serif; fill: #4f46e5; }
-      .ai-title { font: 700 18px Arial, sans-serif; fill: #3730a3; }
-      .ai-text { font: 14px Arial, sans-serif; fill: #4338ca; }
-      .ai-tag { font: 700 11px Arial, sans-serif; fill: #4f46e5; letter-spacing: 1px; }
-      .legend { font: 14px Arial, sans-serif; fill: #4338ca; }
+      .edge-label { font: 600 12px Arial, sans-serif; fill: #334155; }
+      .edge-muted { fill: none; stroke: #94a3b8; stroke-width: 2; stroke-dasharray: 6 5; marker-end: url(#arrow-muted); }
+      .edge-label-muted { font: 600 12px Arial, sans-serif; fill: #64748b; }
+      .excluded-title { font: 700 15px Arial, sans-serif; fill: #64748b; }
+      .excluded-text { font: 13px Arial, sans-serif; fill: #64748b; }
     </style>
   </defs>
 
-  <rect width="1240" height="900" fill="#f8fafc"/>
-  <text x="60" y="52" class="title">HBntory — Service Architecture</text>
-  <text x="60" y="80" class="subtitle">Foundation first: API Gateway, Backoffice, public client, Product MCP Server, PostgreSQL and Product API.</text>
+  <rect width="1000" height="640" fill="#f8fafc"/>
+  <text x="50" y="46" class="title">HBntory — Delivered Service Architecture</text>
+  <text x="50" y="70" class="subtitle">No API Gateway, no AI Query Service — both excluded from the final scope.</text>
 
-  <line x1="795" y1="46" x2="841" y2="46" class="edge-ai"/>
-  <text x="849" y="51" class="legend">final phase — AI Query Service (deferred, not excluded)</text>
+  <!-- Internal browser -->
+  <rect x="60" y="110" width="220" height="70" rx="10" fill="#ffffff" stroke="#334155" stroke-width="1.5"/>
+  <text x="170" y="140" class="box-title" text-anchor="middle">Internal Browser</text>
+  <text x="170" y="162" class="box-text" text-anchor="middle">admin / common user</text>
 
-  <text x="60" y="128" class="section">INTERNAL INVENTORY FLOW</text>
+  <!-- Public browser -->
+  <rect x="720" y="110" width="220" height="70" rx="10" fill="#ffffff" stroke="#334155" stroke-width="1.5"/>
+  <text x="830" y="140" class="box-title" text-anchor="middle">Public Browser</text>
+  <text x="830" y="162" class="box-text" text-anchor="middle">anonymous visitor</text>
 
-  <rect x="70" y="155" width="230" height="125" rx="14" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
-  <text x="96" y="194" class="box-title">Internal Browser</text>
-  <text x="96" y="222" class="box-text">HTML, CSS and JavaScript</text>
-  <text x="96" y="247" class="box-text">Authenticated staff access</text>
+  <!-- Backoffice service (wide, center) -->
+  <rect x="260" y="250" width="480" height="110" rx="10" fill="#e5f1fa" stroke="#246da8" stroke-width="2"/>
+  <text x="500" y="285" class="box-title" text-anchor="middle">Backoffice Service (FastAPI)</text>
+  <text x="500" y="308" class="box-text" text-anchor="middle">Serves authenticated pages (/login, /stock, /users)</text>
+  <text x="500" y="326" class="box-text" text-anchor="middle">and the public catalogue page (/) — same app, no gateway</text>
+  <text x="500" y="344" class="box-text" text-anchor="middle">product_client.py used by both authenticated and public endpoints</text>
 
-  <rect x="440" y="155" width="300" height="125" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
-  <text x="466" y="194" class="box-title">Backoffice Service</text>
-  <text x="466" y="222" class="box-text">FastAPI + SQLAlchemy</text>
-  <text x="466" y="247" class="box-text">Users, roles and stock operations</text>
+  <!-- SQLite -->
+  <rect x="150" y="450" width="220" height="70" rx="10" fill="#ffffff" stroke="#334155" stroke-width="1.5"/>
+  <text x="260" y="480" class="box-title" text-anchor="middle">SQLite</text>
+  <text x="260" y="502" class="box-text" text-anchor="middle">users, branches, stocks</text>
 
-  <rect x="900" y="155" width="280" height="125" rx="14" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-  <text x="926" y="194" class="box-title">PostgreSQL</text>
-  <text x="926" y="222" class="box-text">Users, branches and stock</text>
-  <text x="926" y="247" class="box-text">External product IDs only</text>
+  <!-- External Product API -->
+  <rect x="620" y="450" width="240" height="70" rx="10" fill="#ffffff" stroke="#334155" stroke-width="1.5"/>
+  <text x="740" y="480" class="box-title" text-anchor="middle">External Product API</text>
+  <text x="740" y="502" class="box-text" text-anchor="middle">supplied, read-only</text>
 
-  <path d="M300 218 L350 300" class="edge"/>
-  <path d="M530 300 L440 218" class="edge"/>
-  <path d="M740 218 H900" class="edge"/>
-  <text x="768" y="205" class="edge-label">SQLAlchemy</text>
+  <!-- Product MCP Server (offset, muted) -->
+  <rect x="620" y="560" width="240" height="60" rx="10" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="740" y="587" class="excluded-title" text-anchor="middle">Product MCP Server</text>
+  <text x="740" y="606" class="excluded-text" text-anchor="middle">independent — no consumer in this project</text>
 
-  <rect x="350" y="285" width="180" height="90" rx="14" fill="#f1f5f9" stroke="#334155" stroke-width="2"/>
-  <text x="368" y="317" class="box-title">API Gateway</text>
-  <text x="368" y="340" class="box-text">Single entry point</text>
-  <text x="368" y="358" class="box-text">Routes only, no auth</text>
+  <!-- Edges -->
+  <path d="M170,180 L170,220 Q170,250 260,270" class="edge"/>
+  <text x="130" y="215" class="edge-label">REST + session cookie</text>
 
-  <text x="60" y="353" class="section">PUBLIC PRODUCT AND AVAILABILITY FLOW</text>
+  <path d="M830,180 L830,220 Q830,250 740,270" class="edge"/>
+  <text x="700" y="215" class="edge-label" text-anchor="end">REST, anonymous</text>
 
-  <rect x="70" y="385" width="230" height="125" rx="14" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
-  <text x="96" y="424" class="box-title">Public Browser</text>
-  <text x="96" y="452" class="box-text">Anonymous search interface</text>
-  <text x="96" y="477" class="box-text">No saved history</text>
+  <path d="M400,360 L300,450" class="edge"/>
+  <text x="320" y="415" class="edge-label">SQLAlchemy</text>
 
-  <rect x="440" y="385" width="300" height="125" rx="14" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
-  <text x="466" y="424" class="box-title">Public Client Service</text>
-  <text x="466" y="452" class="box-text">REST backend in client_web</text>
-  <text x="466" y="477" class="box-text">Controlled read-only stock access</text>
+  <path d="M600,360 L700,450" class="edge"/>
+  <text x="660" y="415" class="edge-label">read-only REST</text>
 
-  <rect x="900" y="385" width="280" height="125" rx="14" fill="#f3e8ff" stroke="#9333ea" stroke-width="2"/>
-  <text x="926" y="424" class="box-title">Product MCP Server</text>
-  <text x="926" y="452" class="box-text">list_products</text>
-  <text x="926" y="477" class="box-text">get_product_details</text>
-
-  <path d="M300 447 L350 360" class="edge"/>
-  <path d="M530 360 L440 447" class="edge"/>
-  <path d="M740 447 H900" class="edge"/>
-  <text x="772" y="434" class="edge-label">MCP HTTP</text>
-
-  <path d="M590 385 V318 H1035 V285" class="edge"/>
-  <rect x="850" y="306" width="168" height="22" rx="5" fill="#f8fafc"/>
-  <text x="858" y="322" class="edge-label">read-only SQLAlchemy</text>
-
-  <path d="M700 280 V365 H1210 V672 H1180" class="edge"/>
-  <rect x="1050" y="349" width="118" height="22" rx="5" fill="#f8fafc"/>
-  <text x="1058" y="365" class="edge-label">read-only REST</text>
-
-  <rect x="440" y="610" width="300" height="125" rx="14" fill="#eef2ff" stroke="#6366f1" stroke-width="2.2" stroke-dasharray="8 5"/>
-  <text x="466" y="646" class="ai-tag">FINAL PHASE</text>
-  <text x="466" y="672" class="ai-title">AI Query Service</text>
-  <text x="466" y="698" class="ai-text">Agent + MCP tools, grounded answers</text>
-  <text x="466" y="720" class="ai-text">Independent REST endpoint</text>
-
-  <rect x="900" y="610" width="280" height="125" rx="14" fill="#f1f5f9" stroke="#475569" stroke-width="2"/>
-  <text x="926" y="649" class="box-title">External Product API</text>
-  <text x="926" y="677" class="box-text">Authoritative, read-only data</text>
-  <text x="926" y="702" class="box-text">Products by ID or SKU</text>
-
-  <path d="M1040 510 V610" class="edge"/>
-  <rect x="1046" y="548" width="118" height="22" rx="5" fill="#f8fafc"/>
-  <text x="1054" y="564" class="edge-label">read-only REST</text>
-
-  <path d="M185 510 V672 H440" class="edge-ai"/>
-  <rect x="120" y="586" width="60" height="22" rx="5" fill="#f8fafc"/>
-  <text x="126" y="602" class="edge-label-ai">REST</text>
-
-  <path d="M700 610 V550 H1000 V510" class="edge-ai"/>
-  <rect x="705" y="528" width="86" height="22" rx="5" fill="#f8fafc"/>
-  <text x="711" y="544" class="edge-label-ai">MCP HTTP</text>
-
-  <path d="M740 650 H800 V342 H965 V285" class="edge-ai"/>
-  <rect x="805" y="331" width="162" height="22" rx="5" fill="#f8fafc"/>
-  <text x="811" y="347" class="edge-label-ai">read-only SQLAlchemy</text>
+  <path d="M740,520 L740,560" class="edge-muted"/>
+  <text x="750" y="545" class="edge-label-muted">read-only REST</text>
 </svg>

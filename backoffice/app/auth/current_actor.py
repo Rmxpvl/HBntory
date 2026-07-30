@@ -28,15 +28,21 @@ def get_current_actor(
     if token is None:
         raise unauthenticated
 
-    user_id = read_session_token(token)
-    if user_id is None:
+    payload = read_session_token(token)
+    if payload is None:
         raise unauthenticated
 
-    user = db.query(User).filter_by(user_id=user_id).first()
+    user = db.query(User).filter_by(user_id=payload["user_id"]).first()
 
     # A soft-deleted or otherwise deactivated user must not be treated as
-    # logged in, even with an otherwise valid, unexpired cookie.
-    if user is None or user.status != UserStatus.ACTIVE:
+    # logged in, even with an otherwise valid, unexpired cookie. Same for a
+    # cookie issued before the user's last logout: token_version has moved
+    # on since, even though the signature and expiry are still fine.
+    if (
+        user is None
+        or user.status != UserStatus.ACTIVE
+        or user.token_version != payload["token_version"]
+    ):
         raise unauthenticated
 
     return Actor(

@@ -4,12 +4,12 @@ function normalizeBaseUrl (url) {
   return String(url).replace(/\/+$/, '');
 }
 
-export const AI_API_URL = normalizeBaseUrl(
-  runtimeConfig.AI_API_URL ?? 'http://localhost:8000/api'
+// Relative by default: client_web is served by the same app as the
+// Backoffice, so a relative path works regardless of host/port.
+export const PUBLIC_API_URL = normalizeBaseUrl(
+  runtimeConfig.PUBLIC_API_URL ?? '/api/public'
 );
 
-export const AI_REQUEST_TIMEOUT_MS = Number(
-  runtimeConfig.AI_REQUEST_TIMEOUT_MS ?? 45000
+export const API_REQUEST_TIMEOUT_MS = Number(
+  runtimeConfig.API_REQUEST_TIMEOUT_MS ?? 15000
 );
-
-export const AI_QUERY_PATH = runtimeConfig.AI_QUERY_PATH ?? '/query';

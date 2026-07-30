@@ -1,192 +1,101 @@
-import { AiApiError, sendQuestion } from './api.js';
+import { fetchCategories, fetchProducts, PublicApiError } from './api.js';
 import {
-  getPublicErrorMessage,
-  setButtonBusy,
+  populateCategoryOptions,
+  renderProductGrid,
   setText,
   setVisible,
-  showResultState
+  showCatalogueState
 } from './ui.js';
 
-const form = document.querySelector('#query-form');
-const questionInput = document.querySelector('#question');
-const questionError = document.querySelector('#question-error');
-const characterCount = document.querySelector('#question-character-count');
-const submitButton = document.querySelector('#query-submit');
+const form = document.querySelector('#catalogue-form');
+const searchInput = document.querySelector('#search-input');
+const categorySelect = document.querySelector('#category-select');
+const submitButton = document.querySelector('#catalogue-submit');
 
-const exampleButtons = document.querySelectorAll('.query-example');
+const loadingElement = document.querySelector('#catalogue-loading');
+const errorElement = document.querySelector('#catalogue-error');
+const errorMessage = document.querySelector('#catalogue-error-message');
+const retryButton = document.querySelector('#retry-catalogue-button');
+const emptyElement = document.querySelector('#catalogue-empty');
+const resultsElement = document.querySelector('#product-grid');
 
-const loadingElement = document.querySelector('#query-loading');
-const errorElement = document.querySelector('#query-error');
-const errorMessage = document.querySelector('#query-error-message');
-const retryButton = document.querySelector('#retry-query-button');
-
-const resultElement = document.querySelector('#query-result');
-const answerElement = document.querySelector('#query-answer');
-const newQueryButton = document.querySelector('#new-query-button');
-
-let lastQuestion = '';
-let activeRequestController = null;
-
-const resultElements = {
+const stateElements = {
   loadingElement,
   errorElement,
-  resultElement
+  emptyElement,
+  resultsElement
 };
 
-function updateCharacterCount () {
-  setText(characterCount, questionInput.value.length);
-}
+let activeController = null;
 
-function clearQuestionError () {
-  questionInput.removeAttribute('aria-invalid');
-  setVisible(questionError, false);
-}
-
-function showQuestionError (message) {
-  questionInput.setAttribute('aria-invalid', 'true');
-  setText(questionError, message);
-  setVisible(questionError, true);
-}
-
-function validateQuestion () {
-  const question = questionInput.value.trim();
-
-  clearQuestionError();
-
-  if (!question) {
-    showQuestionError('Saisissez une question avant de lancer la recherche.');
-    questionInput.focus();
-    return null;
+function getPublicErrorMessage (error) {
+  if (error instanceof PublicApiError && error.status === 502) {
+    return 'Le catalogue produit est temporairement indisponible.';
   }
 
-  if (question.length < 3) {
-    showQuestionError('La question doit contenir au moins trois caractères.');
-    questionInput.focus();
-    return null;
-  }
-
-  if (question.length > questionInput.maxLength) {
-    showQuestionError(
-      `La question ne doit pas dépasser ${questionInput.maxLength} caractères.`
-    );
-    questionInput.focus();
-    return null;
-  }
-
-  return question;
+  return error?.message || 'Une erreur inattendue est survenue.';
 }
 
-function extractAnswer (data) {
-  const answer = data?.answer ?? data?.response ?? data?.result;
+async function loadProducts () {
+  activeController?.abort();
+  const controller = new AbortController();
+  activeController = controller;
 
-  return typeof answer === 'string' && answer.trim() ? answer.trim() : null;
-}
+  const filters = {
+    q: searchInput.value.trim(),
+    category: categorySelect.value
+  };
 
-async function runQuery (question) {
-  lastQuestion = question;
-  activeRequestController?.abort();
-  const requestController = new AbortController();
-  activeRequestController = requestController;
-
-  clearQuestionError();
-  setText(answerElement, '');
-  setButtonBusy(submitButton, true, 'Recherche…');
-  showResultState('loading', resultElements);
+  submitButton.disabled = true;
+  showCatalogueState('loading', stateElements);
 
   try {
-    const data = await sendQuestion(question, requestController.signal);
-    const answer = extractAnswer(data);
+    const products = await fetchProducts(filters, controller.signal);
 
-    if (!answer) {
-      throw new AiApiError(
-        502,
-        'Le service n’a renvoyé aucune réponse exploitable.',
-        'EMPTY_ANSWER'
-      );
+    if (products.length === 0) {
+      showCatalogueState('empty', stateElements);
+    } else {
+      renderProductGrid(resultsElement, products);
+      showCatalogueState('results', stateElements);
     }
-
-    /*
-     * textContent est volontaire : une réponse produite par l’IA ne doit
-     * jamais être injectée dans la page avec innerHTML.
-     */
-    setText(answerElement, answer);
-    showResultState('success', resultElements);
-    answerElement.focus();
   } catch (error) {
-    if (error?.code === 'REQUEST_ABORTED') {
+    if (error?.status === 0 && error.message === 'La requête a été annulée.') {
       return;
     }
 
     setText(errorMessage, getPublicErrorMessage(error));
-    showResultState('error', resultElements);
-    errorElement.focus?.();
+    showCatalogueState('error', stateElements);
   } finally {
-    if (activeRequestController === requestController) {
-      setButtonBusy(submitButton, false);
-      activeRequestController = null;
+    if (activeController === controller) {
+      submitButton.disabled = false;
+      activeController = null;
     }
   }
 }
 
-async function handleSubmit (event) {
+async function loadCategories () {
+  try {
+    const categories = await fetchCategories();
+    populateCategoryOptions(categorySelect, categories);
+  } catch {
+    // The category filter is a nice-to-have: if it fails to load, the
+    // search box and "all categories" still work fine on their own.
+  }
+}
+
+function handleSubmit (event) {
   event.preventDefault();
-
-  const question = validateQuestion();
-
-  if (!question) {
-    return;
-  }
-
-  await runQuery(question);
-}
-
-function useExampleQuestion (button) {
-  const question = button.dataset.question ?? '';
-
-  questionInput.value = question;
-  updateCharacterCount();
-  clearQuestionError();
-  questionInput.focus();
-  questionInput.setSelectionRange(question.length, question.length);
-}
-
-function resetQueryPage () {
-  activeRequestController?.abort();
-  form.reset();
-  lastQuestion = '';
-  setText(answerElement, '');
-  updateCharacterCount();
-  clearQuestionError();
-  showResultState('idle', resultElements);
-  questionInput.focus();
-}
-
-function bindEvents () {
-  form.addEventListener('submit', handleSubmit);
-
-  questionInput.addEventListener('input', () => {
-    updateCharacterCount();
-    clearQuestionError();
-  });
-
-  exampleButtons.forEach((button) => {
-    button.addEventListener('click', () => useExampleQuestion(button));
-  });
-
-  retryButton.addEventListener('click', () => {
-    if (lastQuestion) {
-      runQuery(lastQuestion);
-    }
-  });
-
-  newQueryButton.addEventListener('click', resetQueryPage);
+  loadProducts();
 }
 
 function initializePublicClient () {
-  errorElement.setAttribute('tabindex', '-1');
-  bindEvents();
-  updateCharacterCount();
-  showResultState('idle', resultElements);
+  form.addEventListener('submit', handleSubmit);
+  retryButton.addEventListener('click', loadProducts);
+
+  // Categories populate the filter dropdown up front, but the product
+  // list only loads once the visitor actually searches - no default
+  // "browse everything" listing on page load.
+  loadCategories();
 }
 
 initializePublicClient();

@@ -1,103 +1,77 @@
-import { AI_API_URL, AI_QUERY_PATH, AI_REQUEST_TIMEOUT_MS } from './config.js';
+import { API_REQUEST_TIMEOUT_MS, PUBLIC_API_URL } from './config.js';
 
-export class AiApiError extends Error {
-  constructor (status, message, code = null) {
+export class PublicApiError extends Error {
+  constructor (status, message) {
     super(message);
-
-    this.name = 'AiApiError';
+    this.name = 'PublicApiError';
     this.status = status;
-    this.code = code;
   }
 }
 
-async function parseResponse (response) {
-  const rawBody = await response.text();
+function buildUrl (path, params = {}) {
+  const url = new URL(`${PUBLIC_API_URL}${path}`, window.location.origin);
 
-  if (!rawBody) {
-    return null;
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, value);
+    }
   }
 
-  const contentType = response.headers.get('content-type') ?? '';
-
-  if (!contentType.includes('application/json')) {
-    return { message: rawBody };
-  }
-
-  try {
-    return JSON.parse(rawBody);
-  } catch {
-    throw new AiApiError(
-      response.status,
-      'Le service a renvoyé une réponse invalide.',
-      'INVALID_JSON_RESPONSE'
-    );
-  }
+  return url;
 }
 
-function createApiError (response, data) {
-  const error = data?.error;
-
-  return new AiApiError(
-    response.status,
-    error?.message ?? data?.message ?? 'Impossible d’obtenir une réponse.',
-    error?.code ?? data?.code ?? null
-  );
-}
-
-export async function sendQuestion (question, externalSignal = null) {
+async function request (path, params, signal) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(
     () => controller.abort(),
-    AI_REQUEST_TIMEOUT_MS
+    API_REQUEST_TIMEOUT_MS
   );
 
-  const abortFromExternalSignal = () => controller.abort();
-  externalSignal?.addEventListener('abort', abortFromExternalSignal, {
-    once: true
-  });
+  signal?.addEventListener('abort', () => controller.abort(), { once: true });
 
   try {
-    const response = await fetch(`${AI_API_URL}${AI_QUERY_PATH}`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ question }),
+    const response = await fetch(buildUrl(path, params), {
       signal: controller.signal
     });
 
-    const data = await parseResponse(response);
-
     if (!response.ok) {
-      throw createApiError(response, data);
+      let message = 'Une erreur est survenue.';
+
+      try {
+        const data = await response.json();
+        message = data?.error ?? message;
+      } catch {
+        // No JSON body to read the error from - keep the generic message.
+      }
+
+      throw new PublicApiError(response.status, message);
     }
 
-    return data;
+    return await response.json();
   } catch (error) {
-    if (error instanceof AiApiError) {
+    if (error instanceof PublicApiError) {
       throw error;
     }
 
     if (error.name === 'AbortError') {
-      if (externalSignal?.aborted) {
-        throw new AiApiError(0, 'La requête a été annulée.', 'REQUEST_ABORTED');
-      }
-
-      throw new AiApiError(
+      throw new PublicApiError(
         0,
-        'La recherche prend trop de temps. Veuillez réessayer.',
-        'REQUEST_TIMEOUT'
+        signal?.aborted
+          ? 'La requête a été annulée.'
+          : 'Le service met trop de temps à répondre.'
       );
     }
 
-    throw new AiApiError(
-      0,
-      'Impossible de contacter le service de recherche.',
-      'NETWORK_ERROR'
-    );
+    throw new PublicApiError(0, 'Impossible de contacter le service.');
   } finally {
     window.clearTimeout(timeoutId);
-    externalSignal?.removeEventListener('abort', abortFromExternalSignal);
   }
+}
+
+export function fetchCategories (signal) {
+  return request('/categories', {}, signal);
+}
+
+export function fetchProducts ({ q, category } = {}, signal) {
+  return request('/products', { q, category }, signal);
 }

@@ -1,30 +1,20 @@
 # HBntory — Communication Strategy
 
-## Decision Summary
+**This document has been corrected to describe what was actually built.**
+Several entries in the original decision table (API Gateway, Client
+Service querying the database, AI Query Service) described components that
+were excluded from the final scope — see `architecture.md` for the full
+explanation.
+
+## Decision Summary (as delivered)
 
 | Communication | Selected Option |
 | --- | --- |
-| Browser (public or internal) → API Gateway | REST, single HTTP entry point |
-| API Gateway → Backoffice | REST, path-based routing, headers/cookies forwarded unchanged |
-| API Gateway → Client Service | REST, path-based routing, headers/cookies forwarded unchanged |
-| Internal browser → Backoffice | REST with HTML, CSS and JavaScript |
-| Backoffice → PostgreSQL | SQLAlchemy |
-| Backoffice → Product API | Read-only REST |
-| Public browser → Client Service | REST, not WebSockets |
-| Client Service → Product MCP Server | MCP over Streamable HTTP |
+| Internal browser → Backoffice | REST with HTML, CSS and JavaScript, signed session cookie |
+| Public browser → Backoffice | REST, anonymous — same app as above, no gateway |
+| Backoffice → SQLite | SQLAlchemy |
+| Backoffice → Product API | Read-only REST (used by both authenticated and public catalogue endpoints) |
 | Product MCP Server → Product API | Read-only REST |
-| Client Service → stock database | Controlled, read-only SQLAlchemy queries |
-| Public browser → AI Query Service (final phase) | REST |
-| AI Query Service → Product MCP Server (final phase) | MCP over Streamable HTTP |
-| AI Query Service → stock database (final phase) | Controlled, read-only SQLAlchemy queries |
-
-## API Gateway: Single Entry Point, Routing Only
-
-**Selected option:** A single API Gateway receives every request — public or internal — over REST and routes it by path to the Backoffice or the Client Service, forwarding headers and the session cookie unchanged. It maps downstream failures to `404 Not Found` (unknown route), `502 Bad Gateway` (invalid or unexpected upstream response), `503 Service Unavailable` (downstream service down) or `504 Gateway Timeout` (downstream service too slow).
-
-**Main benefit:** One documented entry point for all traffic, with centralised timeout and error handling, while the Backoffice keeps its existing authentication and authorisation logic unchanged.
-
-**Trade-off:** Adds one network hop and one more point of failure to every request; the Gateway must forward auth headers and cookies faithfully, since it has no authentication or authorisation logic of its own.
 
 ## Backoffice: REST with HTML, CSS and JavaScript
 
@@ -34,21 +24,13 @@
 
 **Trade-off:** The team must write browser-side request handling and update pages with JavaScript. Server-side rendering would require less browser code.
 
-## Public Client: REST, Not WebSockets
+## Public Catalogue: REST, Not WebSockets
 
-**Selected option:** Each search is one independent REST request.
+**Selected option:** Each search or filter is one independent REST request to the Backoffice's public endpoints.
 
 **Main benefit:** REST is simple to implement, test and debug, and no persistent connection state is required.
 
-**Trade-off:** REST does not provide continuous bidirectional communication or streamed responses. Neither is needed for deterministic product and stock searches.
-
-## Client Service to Product MCP Server
-
-**Selected option:** MCP over Streamable HTTP on the internal Docker network.
-
-**Main benefit:** The Client Service and Product MCP Server remain independent components and can run in separate containers.
-
-**Trade-off:** This creates another internal endpoint and requires service configuration. A local standard-input/output transport would be simpler only if both components ran together.
+**Trade-off:** REST does not provide continuous bidirectional communication or streamed responses. Neither is needed for a keyword/category product search.
 
 ## Product MCP Server to Product API
 
@@ -58,30 +40,28 @@
 
 **Trade-off:** Product searches may be temporarily unavailable when the external service is slow or offline. The service must return a clear error rather than inventing or permanently caching data.
 
-## Stock Access for the Public Client
-
-**Selected option:** Narrow, read-only SQLAlchemy queries implemented by the server-side Client Service.
-
-**Main benefit:** Anonymous visitors can consult availability without receiving unrestricted database access.
-
-**Trade-off:** Every public query must be deliberately implemented and tested; arbitrary SQL is not exposed.
-
 ## Authentication Transport
 
-**Selected option:** A signed, HTTP-only, same-site session cookie for the Backoffice. State-changing requests also use CSRF protection.
+**Selected option:** A signed, HTTP-only, `SameSite=Lax` session cookie for the Backoffice, with a `token_version` counter checked on every request so logout revokes server-side, immediately, for every session of that user.
 
-**Main benefit:** JavaScript cannot read the cookie, and the browser attaches it automatically to Backoffice requests.
+**Main benefit:** JavaScript cannot read the cookie, the browser attaches it automatically to Backoffice requests, and logout doesn't rely on the client discarding the cookie honestly.
 
-**Trade-off:** This mechanism is intended for the browser-based Backoffice. An unrelated API client would require a separate authentication method.
+**Trade-off:** This mechanism is intended for the browser-based Backoffice. An unrelated API client would require a separate authentication method. It does not include an explicit CSRF token — `SameSite=Lax` is a partial mitigation only, documented as a known limitation.
 
-## AI Query Service (final phase)
+## Excluded from Scope
 
-The AI Query Service is scheduled as the final phase and built last, once the deterministic foundation is stable — it is deferred, not dropped.
+The following were part of the original communication plan and were not
+built, by agreement with the project supervisor:
 
-**Selected option:** The Client Web Interface sends each natural-language question to the AI Query Service over REST. The service uses one or more AI agents that reach product data through the Product MCP Server (MCP over Streamable HTTP) and stock through controlled, read-only queries.
-
-**Main benefit:** It reuses the MCP tools and stock-access boundaries already built for the deterministic client, so the AI layer adds agent reasoning without introducing new data-access paths.
-
-**Trade-off:** It adds an AI dependency and non-deterministic output, so answers must be grounded in tool results and must clearly report when information is unavailable.
-
-Until this phase lands, the public client returns deterministic product and stock results from the MCP tools and read-only database queries.
+- **API Gateway** as a single routing entry point in front of the
+  Backoffice and a separate Client Service. Not built — the Backoffice
+  serves both the authenticated pages and the public catalogue directly.
+- **Client Service → stock database**, controlled read-only SQLAlchemy
+  queries from a separate public-facing service. Not built — the
+  delivered public catalogue shows product data only, never touches the
+  database, and is served by the Backoffice itself rather than a separate
+  service.
+- **Public browser → AI Query Service**, and **AI Query Service → Product
+  MCP Server / stock database**. Not built at all — no AI Query Service
+  exists in this project. The Product MCP Server was still built and
+  verified independently; it simply has no consumer.

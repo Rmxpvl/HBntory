@@ -1,6 +1,6 @@
 # Plan d'action — Backend / Sécurité / Base de données
 
-Ce document définit mon rôle dans le projet HBntory (Lead Backend), corrige la répartition initiale (session cookie au lieu de JWT, pour rester cohérent avec `architecture_EN.md` et `communication-strategies.md`), et sert de checklist de suivi.
+Ce document définit mon rôle dans le projet HBntory (Lead Backend), corrige la répartition initiale (session cookie au lieu de JWT, pour rester cohérent avec `architecture.md` et `communication-strategies.md`), et sert de checklist de suivi.
 
 ## Répartition d'équipe (résumé corrigé)
 
@@ -11,7 +11,7 @@ Ce document définit mon rôle dans le projet HBntory (Lead Backend), corrige la
 | IA / MCP | Personne 3 | Task 4 (MCP Server) uniquement |
 | Task 7 (Intégration/Tests/README) | Tout le monde, chacun sur sa partie | Backend: tests + doc API + README backend |
 
-**Task 5 (AI Query Service) et Task 6 (Client Web Interface) : hors périmètre**, décision actée avec le responsable du projet — on ne les fait pas. Ancienne note ("trou non résolu — backend de `client_web`") retirée : elle partait d'une lecture de `architecture_EN.md`/`mvp-definition.md` (docs internes d'architecture) plutôt que de l'énoncé officiel des tâches. En relisant le vrai texte de Task 5/6 : c'est l'AI Query Service (Task 5, jamais construit) qui devait se connecter au MCP server et gérer l'accès au stock (au choix : étendre le MCP server, un DB MCP tool, ou une API interne) — pas `client_web` (Task 6), qui n'aurait été qu'une page appelant l'endpoint de Task 5. Comme Task 5/6 ne se font pas, `client_web/` reste un squelette statique (JS vides) sans que ce soit un manque à combler.
+**Task 5 (AI Query Service) et Task 6 (Client Web Interface) : hors périmètre**, décision actée avec le responsable du projet — on ne les fait pas. Ancienne note ("trou non résolu — backend de `client_web`") retirée : elle partait d'une lecture de `architecture.md`/`mvp-definition.md` (docs internes d'architecture) plutôt que de l'énoncé officiel des tâches. En relisant le vrai texte de Task 5/6 : c'est l'AI Query Service (Task 5, jamais construit) qui devait se connecter au MCP server et gérer l'accès au stock (au choix : étendre le MCP server, un DB MCP tool, ou une API interne) — pas `client_web` (Task 6), qui n'aurait été qu'une page appelant l'endpoint de Task 5. Comme Task 5/6 ne se font pas, `client_web/` a été reconstruit en catalogue produits public fonctionnel (recherche par mot-clé + filtre catégorie, `GET /api/public/products` et `GET /api/public/categories`, anonymes) plutôt que laissé en squelette lié à une IA inexistante — voir `client_web/README.md`.
 
 Conséquence pour Task 4 (MCP Server, déjà fait et vérifié) : il n'aura pas de vrai consommateur (l'AI agent qui devait l'utiliser ne sera pas construit) — à mentionner clairement dans le README/la présentation finale comme un choix de périmètre assumé, pas un oubli.
 
@@ -31,31 +31,31 @@ Décision d'authentification corrigée : **session cookie signée, HTTP-only, sa
   - [x] 3 branches (Annecy, Thonon-les-bains, Genève).
   - [x] Stock d'exemple par branche, suffisant pour tester. Testé end-to-end en SQLite.
   - [x] Idempotent (vérifie l'existant avant chaque insert).
-- [ ] Migration Alembic initiale — **pas encore fait**, on utilise seulement `Base.metadata.create_all()` pour l'instant. À faire avant une vraie mise en prod / Task 7.
+- [x] Stratégie d'initialisation : `Base.metadata.create_all()` + `app/seed.py` (idempotent). Alembic écarté volontairement, hors périmètre pour ce projet. Limite assumée : `create_all()` ne crée que les tables manquantes et ne modifie pas une table existante, donc un changement de `models.py` impose de supprimer et recréer la base.
 - [x] Validation métier stock (Task 4) — `app/services/stock_services.py`, testée end-to-end en SQLite (API Produit mockée) :
   - [x] quantité entière positive obligatoire (`_validate_stock_operation`, partagée par add/remove).
   - [x] branche valide vérifiée avant toute opération.
   - [x] `add_stock` : incrémente si la ligne existe déjà, sinon valide le produit via l'API externe puis crée la ligne.
   - [x] `remove_stock` : rejette si la ligne n'existe pas, rejette si la quantité à retirer dépasse le stock disponible.
   - [x] product_id validé contre le Product API externe (`GET {PRODUCT_API_URL}/api/v1/products/{id}`) **uniquement à la création d'une nouvelle ligne** — pas re-vérifié à chaque réapprovisionnement d'une ligne déjà existante (décision assumée : le produit a déjà été validé une fois).
-  - [ ] **Point d'attention non résolu** : l'API Produit externe utilise des ID exemples type SKU (`"HB-LAP-1001"`), alors que `Stock.product_id` est un `Integer` en base — à clarifier avec l'équipe/le prof avant intégration réelle (peut nécessiter de changer le type de la colonne).
-  - [ ] Pas encore de tests automatisés formels (pytest) — validé pour l'instant par un script ad hoc, à formaliser en Task 7.
+  - [x] ~~Point d'attention SKU vs Integer~~ — **résolu, pas un problème** : la vraie API Produit a un `id` entier (1 à 40) et un champ `sku` texte séparé. `Stock.product_id` en `Integer` correspond au bon champ (`id`), pas au `sku`. Vérifié contre l'API réelle.
+  - [x] Tests automatisés (pytest) — `backoffice/tests/`, 40 tests, aucune dépendance externe (SQLite en fichier temporaire).
 - [x] Documenter le schéma (`docs/db-schema.md`) + justification des choix, tenu à jour à chaque changement.
 
 ## Task 2 — Authentication and Authorization
 
-- [ ] Login : vérification credentials, rejet des users soft-deleted/inactifs.
+- [x] Login : vérification credentials, rejet des users soft-deleted/inactifs. `POST /api/auth/login`, `app/services/auth_services.py::authenticate_user`.
 - [x] Hash des mots de passe avec **Argon2id** (déjà décidé dans l'architecture) — documenté (mécanisme, hashing, vérification, pourquoi SHA256 seul est insuffisant) dans `docs/password-security.md`.
-- [ ] Session cookie signée, HTTP-only, same-site à la connexion réussie.
-- [ ] Middleware/dépendance FastAPI qui recharge l'utilisateur à chaque requête protégée et vérifie : rôle, statut actif, branche.
-- [ ] Protection CSRF sur les routes state-changing (POST/PUT/DELETE).
-- [ ] RBAC :
-  - [ ] `admin` : accès gestion users, refusé sur endpoints stock.
-  - [ ] `common` : accès stock limité à sa branche (dérivée du compte authentifié, jamais du body/paramètre client), refusé sur endpoints users.
-- [ ] Logout (invalidation de session côté serveur).
-- [ ] Tests : accès anonyme refusé, cross-branch refusé, priv-esc common→admin refusé, soft-deleted ne peut pas se connecter.
-- [ ] Rate limiting basique sur `/login` (protection brute-force) — bon ajout portfolio sécurité, à voir si le temps permet.
-- [ ] Documentation : stratégie Argon2id, stratégie session/CSRF, matrice RBAC.
+- [x] Session cookie signée, HTTP-only, same-site à la connexion réussie. `app/auth/sessions.py`, `app/routes/auth.py`.
+- [x] Middleware/dépendance FastAPI qui recharge l'utilisateur à chaque requête protégée et vérifie : rôle, statut actif, branche. `app/auth/current_actor.py::get_current_actor`.
+- [ ] Protection CSRF explicite (token) sur les routes state-changing — **non implémentée**. `SameSite=Lax` sur le cookie de session offre une mitigation contre les soumissions de formulaire cross-site basiques, mais ce n'est **pas équivalent** à une protection CSRF par token. Limitation connue, hors périmètre pour ce projet.
+- [x] RBAC :
+  - [x] `admin` : accès gestion users, refusé sur endpoints stock (`require_admin`, testé dans `test_rbac.py`).
+  - [x] `common` : accès stock limité à sa branche (dérivée de la session, jamais du body/paramètre client — `StockChange` n'a même pas de champ `branch_id`), refusé sur endpoints users (`require_common`, testé).
+- [x] Logout — **révocation réelle côté serveur**, pas juste suppression du cookie. `User.token_version` est inclus dans le token signé et comparé à chaque requête ; le logout l'incrémente, invalidant immédiatement tous les cookies déjà émis pour cet utilisateur (pas seulement celui du navigateur qui se déconnecte). Testé : un cookie volé avant logout est bien rejeté après (`test_logout_revokes_the_session_server_side`).
+- [x] Tests : accès anonyme refusé, cross-branch refusé, priv-esc common→admin refusé, soft-deleted ne peut pas se connecter — `test_rbac.py`, `test_login.py`, `test_current_actor.py`.
+- [ ] Rate limiting basique sur `/login` (protection brute-force) — **hors périmètre**, non demandé par l'énoncé, non implémenté. Ce n'est pas un TODO ouvert.
+- [x] Documentation : stratégie Argon2id (`docs/password-security.md`), stratégie session/cookie (`docs/backoffice-ui-approach.md`, `docs/local-run-guide.md`), matrice RBAC (ce fichier + `test_rbac.py` comme preuve exécutable).
 
 ## Section 3 — Backoffice Functionalities
 
@@ -68,51 +68,57 @@ Section de la consigne pas anticipée dans la répartition initiale (absente jus
 | 3. Product API Integration in Backoffice | Moi (point d'entrée backend) | Le backend doit exposer un moyen d'interroger l'API Produit externe ; le frontend (Personne 2) consomme cet endpoint. Jamais de détails produit dupliqués en local DB |
 | 4. Backoffice Interface | Personne 2 (nico) | HTML/CSS des 4 pages déjà mergé sur `master`. Mon rôle : fournir des endpoints REST fonctionnels à brancher dessus |
 
-- [ ] 1 — Common User Stock Operations :
-  - [ ] `POST /stock/add` (branche déduite de la session, jamais du body client — cf. RBAC Task 2)
-  - [ ] `POST /stock/remove`
-  - [ ] `GET /stock` (liste produits en stock, filtrée sur la branche de l'utilisateur connecté)
-  - [ ] `GET /stock/{product_id}` (quantité disponible pour un produit, dans sa branche)
-  - [ ] Backend doit rejeter toute tentative d'opérer sur une branche différente de celle de l'utilisateur (pas seulement côté UI)
-- [ ] 2 — Admin User Management :
-  - [ ] `GET /users` (liste)
-  - [ ] `POST /users` (création, common uniquement — un admin ne se crée pas via cet endpoint sans contrôle)
-  - [ ] `PUT /users/{id}` (changement branche, changement mot de passe)
-  - [ ] `DELETE /users/{id}` (soft-delete : `status=Inactive` + `deleted_at`, jamais de suppression physique)
-  - [ ] Vérifier : un user soft-deleted ne peut plus se connecter (Task 2, check au login), et son historique de stock reste intact (déjà garanti par le schéma — `Stock` ne référence aucun `user_id`)
-- [ ] 3 — Product API Integration in Backoffice :
-  - [ ] Décider du mode d'exposition (proxy backend vers l'API Produit, ou sélecteur/recherche côté frontend qui appelle l'API Produit directement) — à trancher avant de coder
-  - [ ] Aucune donnée produit (nom, prix, description) stockée en local, uniquement `product_id` — déjà respecté par le schéma
-  - [ ] Résoudre le point d'attention `product_id` (Integer local vs SKU string API externe, cf. Task 1) avant d'intégrer pour de vrai
-- [ ] 4 — Backoffice Interface : côté moi, s'assurer que les endpoints REST ci-dessus répondent avec des codes HTTP et payloads exploitables par les pages déjà présentes dans `backoffice/static/`
+- [x] 1 — Common User Stock Operations :
+  - [x] `POST /api/stock/add` (branche déduite de la session, jamais du body client — cf. RBAC Task 2)
+  - [x] `POST /api/stock/remove`
+  - [x] `GET /api/stock` (liste produits en stock, filtrée sur la branche de l'utilisateur connecté)
+  - [x] Vérifier la quantité disponible d'un produit avant retrait : couvert par `GET /api/stock` (une ligne absente = 0 en stock, cohérent dans les deux cas) — pas de route dédiée `GET /stock/{product_id}` (décision : `stock_services.get_quantity()` était du code mort, jamais exposé ni appelé ; supprimé plutôt que branché, l'interface existante suffit).
+  - [x] Backend rejette toute tentative d'opérer sur une branche différente de celle de l'utilisateur (pas seulement côté UI) — testé (`test_stock_operations_ignore_a_client_supplied_branch_id`).
+- [x] 2 — Admin User Management :
+  - [x] `GET /api/users` (liste)
+  - [x] `POST /api/users` (création, common uniquement — un admin ne se crée pas via cet endpoint sans contrôle)
+  - [x] `PATCH /api/users/{id}` (changement username/branche)
+  - [x] `PATCH /api/users/{id}/password` (changement mot de passe, séparé de la modification de profil)
+  - [x] `DELETE /api/users/{id}` (soft-delete : `status=Inactive` + `deleted_at`, jamais de suppression physique)
+  - [x] Vérifié : un user soft-deleted ne peut plus se connecter, et une session déjà ouverte est rejetée dès la requête suivante (le backend recharge l'utilisateur à chaque appel) ; son historique de stock reste intact (garanti par le schéma — `Stock` ne référence aucun `user_id`).
+- [x] 3 — Product API Integration in Backoffice :
+  - [x] Mode retenu : proxy backend (`app/services/product_client.py`) — le frontend ne parle jamais directement à l'API Produit externe.
+  - [x] Aucune donnée produit (nom, prix, description) stockée en local, uniquement `product_id`.
+  - [x] ~~Point d'attention `product_id`~~ — résolu (voir Task 1) : l'API réelle a un `id` entier, `Stock.product_id` est correct tel quel.
+- [x] 4 — Backoffice Interface : endpoints REST fonctionnels, branchés sur les pages de `backoffice/static/` (login, stock, users), vérifiés en conditions réelles (navigateur + serveur local).
 
-## Endpoints REST Backoffice à livrer
+## Endpoints REST Backoffice livrés
 
-- [ ] `POST /login`
-- [ ] `POST /logout`
-- [ ] `GET /users` (admin)
-- [ ] `POST /users` (admin)
-- [ ] `PUT /users/{id}` (admin — modification, changement branche/mot de passe)
-- [ ] `DELETE /users/{id}` (admin — soft delete)
-- [ ] `GET /stock` (common, filtré sur sa branche)
-- [ ] `POST /stock/add` (common)
-- [ ] `POST /stock/remove` (common)
+- [x] `POST /api/auth/login`
+- [x] `POST /api/auth/logout`
+- [x] `GET /api/auth/me`
+- [x] `GET /api/users` (admin)
+- [x] `POST /api/users` (admin)
+- [x] `PATCH /api/users/{id}` (admin — modification username/branche)
+- [x] `PATCH /api/users/{id}/password` (admin — changement mot de passe)
+- [x] `DELETE /api/users/{id}` (admin — soft delete)
+- [x] `GET /api/stock` (common, filtré sur sa branche)
+- [x] `POST /api/stock/add` (common)
+- [x] `POST /api/stock/remove` (common)
+- [x] `GET /api/products` (authentifié — Backoffice)
+- [x] `GET /api/public/products`, `GET /api/public/categories` (anonymes — catalogue public `client_web`)
+- [x] `GET /api/branches` (admin)
 
-Chaque endpoint : valider entrée, appliquer RBAC en backend (pas seulement cacher un bouton côté front), retourner codes HTTP corrects (401/403/404/409/422).
+Chaque endpoint : valide l'entrée, applique le RBAC en backend (pas seulement cacher un bouton côté front), retourne des codes HTTP corrects (401/403/404/409/422).
 
 ## Task 7 — Ma part (tests, sécurité, doc, README)
 
-- [ ] Tests backend automatisés (modèles, validation stock, auth, RBAC).
-- [ ] Tests sécurité ciblés :
-  - [ ] injection via product_id / paramètres stock
-  - [ ] IDOR (accès stock d'une autre branche via manipulation d'ID)
-  - [ ] priv-esc common → admin
-  - [ ] contournement soft-delete
-  - [ ] absence de CSRF token sur requête state-changing
-- [ ] Documentation API (endpoints, payloads, codes retour).
-- [ ] README section Backend (setup DB, migrations, seed, lancement service).
+- [x] Tests backend automatisés (modèles, validation stock, auth, RBAC) — `backoffice/tests/`, 40 tests.
+- [x] Tests sécurité ciblés :
+  - [x] injection via product_id / paramètres stock — Pydantic (`StrictInt`, rejet des booléens comme entiers, `extra="forbid"`).
+  - [x] IDOR (accès stock d'une autre branche via manipulation d'ID) — `test_stock_operations_ignore_a_client_supplied_branch_id`.
+  - [x] priv-esc common → admin — `test_admin_cannot_manage_stock`, `test_common_user_cannot_manage_users`.
+  - [x] contournement soft-delete — `test_inactive_user_cannot_log_in`, `test_session_with_stale_token_version_is_rejected`.
+  - [x] absence de protection CSRF par token sur requête state-changing — **constatée et documentée comme limitation connue** (pas un test à faire passer : `SameSite=Lax` seul, pas de token CSRF explicite).
+- [x] Documentation API (endpoints, payloads, codes retour) — `docs/backoffice-ui-approach.md`, `README.md` (racine).
+- [x] README section Backend (setup DB, seed, lancement service) — `README.md` (racine) + `docs/local-run-guide.md`.
 
 ## Notes de cohérence avec les docs existants
 
-- Si `architecture_FR.md` existe et n'a pas encore été mis à jour (session cookie / AI en Phase 7 optionnelle), il faudra le resynchroniser avec `architecture_EN.md`.
+- [x] `architecture.md`/`architecture.md`/`mvp-definition.md`/`initial-service-diagram.md`/`communication-strategies.md` réalignés sur le système réellement livré (pas d'API Gateway, pas d'AI Query Service, catalogue public sans MCP ni accès DB).
 - Ne pas réintroduire JWT dans le code ou les specs d'API sans rediscuter et remettre à jour `communication-strategies.md`.

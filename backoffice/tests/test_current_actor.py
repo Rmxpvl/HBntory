@@ -35,7 +35,7 @@ def test_anonymous_request_is_rejected():
 
 def test_valid_session_returns_the_logged_in_user(db):
     user = _make_user(db)
-    token = create_session_token(user.user_id)
+    token = create_session_token(user.user_id, user.token_version)
 
     client = TestClient(app, base_url="https://testserver", cookies={"session": token})
     response = client.get("/api/auth/me")
@@ -46,7 +46,7 @@ def test_valid_session_returns_the_logged_in_user(db):
 
 def test_inactive_user_session_is_rejected(db):
     user = _make_user(db, status=UserStatus.INACTIVE)
-    token = create_session_token(user.user_id)
+    token = create_session_token(user.user_id, user.token_version)
 
     client = TestClient(app, base_url="https://testserver", cookies={"session": token})
     response = client.get("/api/auth/me")
@@ -56,6 +56,21 @@ def test_inactive_user_session_is_rejected(db):
 
 def test_garbage_cookie_is_rejected():
     client = TestClient(app, base_url="https://testserver", cookies={"session": "not-a-real-token"})
+    response = client.get("/api/auth/me")
+
+    assert response.status_code == 401
+
+
+def test_session_with_stale_token_version_is_rejected(db):
+    # Simulates a cookie issued before a logout bumped token_version:
+    # the signature and expiry are still valid, but it must not work anymore.
+    user = _make_user(db)
+    token = create_session_token(user.user_id, user.token_version)
+
+    user.token_version += 1
+    db.commit()
+
+    client = TestClient(app, base_url="https://testserver", cookies={"session": token})
     response = client.get("/api/auth/me")
 
     assert response.status_code == 401

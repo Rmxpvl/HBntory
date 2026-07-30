@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from sqlalchemy.exc import IntegrityError
+
 from . import product_client
 from ..models import Branch, Stock
 
@@ -36,7 +38,18 @@ def add_stock(db, branch_id, product_id, quantity):
     else:
         existing_stock.quantity += quantity
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        # Another request created the same (branch, product) row between our
+        # read and this commit - a real race, not a client mistake, but the
+        # caller still needs a clean 400, not an unhandled 500.
+        db.rollback()
+        raise ValueError(
+            f"stock for branch {branch_id} / product {product_id} "
+            "was just created by another request, retry"
+        ) from exc
+
     return existing_stock
 
 
@@ -73,20 +86,6 @@ def remove_stock(db, branch_id, product_id, quantity):
 
     db.commit()
     return existing_stock
-
-
-def get_quantity(db, branch_id, product_id):
-    """How many units of one product this branch holds."""
-    branch = db.query(Branch).filter_by(branch_id=branch_id).first()
-    if branch is None:
-        raise ValueError(f"branch {branch_id} does not exist")
-
-    existing_stock = (
-        db.query(Stock).filter_by(branch_id=branch_id, product_id=product_id).first()
-    )
-    # No row simply means none of it. That is the answer 0, not an error:
-    # the user asked a legitimate question.
-    return 0 if existing_stock is None else existing_stock.quantity
 
 
 def list_branch_stock(db, branch_id):

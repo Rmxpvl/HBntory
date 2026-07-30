@@ -24,7 +24,7 @@ def _login_as(db, **overrides):
     db.commit()
     db.refresh(user)
 
-    token = create_session_token(user.user_id)
+    token = create_session_token(user.user_id, user.token_version)
     client = TestClient(app, base_url="https://testserver", cookies={"session": token})
     return client, user
 

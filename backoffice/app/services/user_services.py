@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from sqlalchemy.exc import IntegrityError
+
 from ..auth.passwords import hash_password
 from ..models import Branch, User, Role, UserStatus
 
@@ -36,7 +38,15 @@ def create_common_user(db, username, password, branch_id):
     user = User(username=username, password_hash=hash_password(password),
                 role=Role.COMMON, branch_id=branch_id, status=UserStatus.ACTIVE)
     db.add(user)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        # Another request created this username between our check and this
+        # commit - a real race, still a clean 409, not an unhandled 500.
+        db.rollback()
+        raise ConflictError(f"username {username} already exists") from exc
+
     return user
 
 
@@ -76,5 +86,7 @@ def change_password(db, user_id, new_password):
     user = db.query(User).filter_by(user_id=user_id).first()
     if user is None:
         raise NotFoundError(f"user {user_id} does not exist")
+    if user.role == Role.ADMIN:
+        raise ValueError("the admin account cannot be modified")
     user.password_hash = hash_password(new_password)   # plain text is never stored
     db.commit()

@@ -8,20 +8,23 @@ from fastapi.staticfiles import StaticFiles
 from .auth.current_actor import Actor, get_current_actor
 from .dependencies import get_db
 from .models import Branch
-from .routes import auth, stock, users
+from .routes import auth, public, stock, users
 from .services import product_client
 
 
-# Locate the Backoffice frontend folder.
+# Locate the Backoffice frontend folder, and the public client_web page
+# (a sibling project folder, not part of the Backoffice itself).
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+CLIENT_WEB_DIR = Path(__file__).resolve().parent.parent.parent / "client_web"
 
 # Central FastAPI application for the HBntory Backoffice.
 app = FastAPI(title="HBntory Backoffice")
 
-# Make the auth, stock and user routes available under /api.
+# Make the auth, stock, user and public (anonymous) routes available under /api.
 app.include_router(auth.router, prefix="/api")
 app.include_router(stock.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
+app.include_router(public.router, prefix="/api")
 
 
 @app.exception_handler(HTTPException)
@@ -115,10 +118,19 @@ def branches(
 
 
 @app.get("/", include_in_schema=False)
+def index_page():
+    # The public client_web page is the default landing page.
+    return FileResponse(CLIENT_WEB_DIR / "index.html")
+
+
+@app.get("/login", include_in_schema=False)
 def login_page():
-    # Open the login page when the Backoffice address is visited.
     return FileResponse(STATIC_DIR / "login.html")
 
+
+# client_web's own assets (css/js), namespaced so they don't collide with
+# the Backoffice's own css/js of the same name served below.
+app.mount("/client-web", StaticFiles(directory=CLIENT_WEB_DIR), name="client_web")
 
 # Serve the HTML, CSS and JavaScript files after checking the API routes.
 app.mount("/", StaticFiles(directory=STATIC_DIR), name="frontend")
