@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from sqlalchemy.exc import IntegrityError
+
 from . import product_client
 from ..models import Branch, Stock
 
@@ -36,7 +38,18 @@ def add_stock(db, branch_id, product_id, quantity):
     else:
         existing_stock.quantity += quantity
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        # Another request created the same (branch, product) row between our
+        # read and this commit - a real race, not a client mistake, but the
+        # caller still needs a clean 400, not an unhandled 500.
+        db.rollback()
+        raise ValueError(
+            f"stock for branch {branch_id} / product {product_id} "
+            "was just created by another request, retry"
+        ) from exc
+
     return existing_stock
 
 

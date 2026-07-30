@@ -55,9 +55,16 @@ def list_products():
             raise RuntimeError(f"could not list products: {exc}")
 
         payload = response.json()
-        products.extend(payload["results"])
+        results = payload["results"]
 
-        offset += payload["limit"]
+        if not results:
+            return products
+
+        products.extend(results)
+        # Advance by how many results actually came back, not by the
+        # reported "limit" - a misconfigured/misbehaving API reporting
+        # limit=0 must not stall progress forever.
+        offset += len(results)
 
         if offset >= payload["count"]:
             return products
