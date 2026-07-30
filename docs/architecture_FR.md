@@ -1,173 +1,237 @@
 # HBntory — Architecture du système
 
-## 1. Périmètre
+## 1. Périmètre (tel que livré)
 
-HBntory est une plateforme de gestion des stocks destinée à une entreprise possédant plusieurs agences. L'implémentation est livrée en deux temps — d'abord une base déterministe, puis une couche IA. Elle comprend :
+Ce document décrit le système réellement construit, pas le plan initial en
+plusieurs phases. Voir `mvp-definition.md` pour le plan d'origine et ce qui
+en a été retiré, d'un commun accord avec le responsable du projet.
 
-- un point d'entrée HTTP unique via l'API Gateway. Le navigateur y accède de la même manière, que ce soit un compte public ou un compte admin/employé ; le Gateway route ensuite la requête vers le Backoffice ou le Client Web, sans appliquer lui-même d'autorisation. Les autorisations restent déterminées par le Backoffice ;
-- un Backoffice authentifié destiné aux utilisateurs internes ;
-- PostgreSQL pour les utilisateurs, les agences et les stocks ;
-- l'API Produit externe fournie en lecture seule ;
-- un serveur MCP Produit exposant des outils contrôlés ;
-- une interface web publique permettant des recherches sur les produits et les stocks ;
-- un AI Query Service, ajouté en phase finale, qui répond aux questions en langage naturel à l'aide des outils MCP et des données de stock.
+HBntory, tel que livré, est une plateforme de gestion des stocks pour une
+entreprise possédant plusieurs agences. Il comprend :
 
-L'AI Query Service est livré en phase finale, une fois la base déterministe stabilisée — il est reporté, non abandonné. Jusque-là, les recherches publiques reposent sur des paramètres REST explicites et des résultats structurés ; une fois la couche IA en place, l'interface web publique envoie les questions en langage naturel à l'AI Query Service, qui répond à l'aide des mêmes outils MCP et données de stock.
+- **le Backoffice** — un unique service FastAPI qui authentifie les
+  utilisateurs internes (`admin`, `common`) et sert, sur cette même
+  application, une page publique anonyme de catalogue produits ;
+- **SQLite** comme base de données locale documentée et testée pour les
+  utilisateurs, agences et stocks (voir "Limitations connues" pour le
+  statut de PostgreSQL) ;
+- **l'API Produit externe fournie**, en lecture seule ;
+- **un serveur MCP Produit indépendant** (`product_mcp_server/`) exposant
+  des outils contrôlés via MCP.
+
+Il n'y a **pas d'API Gateway**. Il n'y a **pas d'AI Query Service**. Les
+deux faisaient partie du plan initial (`mvp-definition.md`, Phases 1 et 7)
+et ont été retirés du périmètre final, d'un commun accord avec le
+responsable du projet — voir la section "Hors périmètre" plus bas.
 
 ## 2. Composants et responsabilités
 
-### API Gateway
-
-L'API Gateway est le point d'entrée HTTP unique de l'application, placé devant le Backoffice et le Client Web. Il :
-
-- reçoit les requêtes des clients et les envoie vers le service demandé ;
-- gère les problèmes de connexion (timeout) ;
-- renvoie une erreur HTTP adaptée lorsqu'une requête ne peut pas aboutir : `404 Not Found` si la route demandée n'existe pas, `502 Bad Gateway` si la réponse reçue du service en aval est invalide ou inattendue, `503 Service Unavailable` si le service en aval est indisponible, `504 Gateway Timeout` si le service ne répond pas dans le délai prévu ;
-- transmet les en-têtes HTTP et le cookie de session au service cible sans les lire, les modifier ou les supprimer — le mécanisme d'authentification existant du Backoffice reste inchangé.
-
-L'API Gateway n'a aucun pouvoir de décision : il route, il ne décide pas. Il :
-
-- ne gère pas l'authentification des utilisateurs ;
-- ne lit pas les cookies de session ;
-- ne valide pas les rôles ou les permissions ;
-- ne modifie pas les informations d'identification transmises ;
-- ne connaît pas les agences ni les règles métier ;
-- n'effectue aucune opération directe sur la base de données.
-
 ### Service Backoffice
 
-Le Backoffice est un service FastAPI doté d'une interface simple en HTML, CSS et JavaScript. Il :
+Le Backoffice (`backoffice/`) est un unique service FastAPI doté d'une
+interface simple en HTML, CSS et JavaScript. Il sert directement deux
+choses, sans aucune passerelle devant lui :
 
-- authentifie les utilisateurs internes ;
-- applique les rôles et les restrictions liées aux agences côté serveur ;
-- permet à l'unique utilisateur `admin` de lister, créer, modifier et désactiver les utilisateurs communs ;
-- permet à `admin` de modifier le mot de passe ou l'agence d'un utilisateur commun ;
-- interdit à `admin` toute opération sur les stocks ;
-- permet aux utilisateurs communs de consulter, lister, ajouter et retirer du stock uniquement dans leur agence ;
-- accède aux données locales avec SQLAlchemy ;
-- récupère les informations produit auprès de l'API externe au moyen de requêtes REST en lecture seule.
+- **Les pages authentifiées** (`/login`, `/stock`, `/users`) :
+  - authentifie les utilisateurs internes via un cookie de session signé,
+    `HttpOnly`, `SameSite=Lax` ;
+  - applique les rôles et restrictions d'agence côté serveur, pas
+    seulement dans l'interface ;
+  - permet à l'unique `admin` de lister, créer, modifier et désactiver les
+    utilisateurs communs, et de changer leur mot de passe ou leur agence ;
+  - interdit à `admin` toute opération sur les stocks ;
+  - permet aux utilisateurs communs de consulter, lister, ajouter et
+    retirer du stock uniquement dans leur agence ;
+  - récupère les informations produit auprès de l'API Produit externe via
+    des requêtes REST en lecture seule (`app/services/product_client.py`).
+- **La page catalogue publique** (`/`, servie par `client_web/`) :
+  - anonyme, aucune session requise ;
+  - permet aux visiteurs de rechercher le catalogue par mot-clé et de
+    filtrer par catégorie (`GET /api/public/products`,
+    `GET /api/public/categories`) ;
+  - interroge l'API Produit externe directement via le même module
+    `product_client.py` que le côté authentifié — **pas** via le serveur
+    MCP Produit, et sans aucun accès à la base de données.
 
-Il n'existe qu'un seul administrateur, nommé `admin`. Chaque utilisateur commun est rattaché à une seule agence. Le serveur détermine cette agence à partir du compte authentifié et ne fait pas confiance à une agence transmise par le navigateur.
+Il n'existe qu'un seul administrateur, nommé `admin`. Chaque utilisateur
+commun est rattaché à une seule agence. Le serveur détermine cette agence
+à partir de la session authentifiée, sans jamais faire confiance à une
+agence transmise par le navigateur.
 
-### Base de données PostgreSQL
+### Base de données locale
 
-La base locale contient uniquement :
+SQLite (un simple fichier, `dev.db` par défaut) est la base de données
+locale documentée et testée. Elle contient uniquement :
 
-- `users` : nom d'utilisateur, empreinte du mot de passe, rôle, agence et état de suppression logique ;
-- `branches` : identifiant et nom de l'agence ;
-- `stock` : agence, identifiant numérique externe du produit et quantité disponible.
+- `users` : nom d'utilisateur, empreinte du mot de passe, rôle, agence,
+  état de suppression logique, et un compteur `token_version` utilisé
+  pour la révocation de session ;
+- `branches` : identifiant et localisation de l'agence ;
+- `stocks` : agence, identifiant numérique externe du produit et quantité
+  disponible.
 
-Elle ne contient ni nom, ni SKU, ni description, ni prix, ni image, ni métadonnée de produit.
+Elle ne contient ni nom, ni SKU, ni description, ni prix, ni image, ni
+métadonnée de produit. Voir "Limitations connues" pour le statut de
+PostgreSQL.
 
 ### API Produit externe
 
-L'API fournie constitue la source de référence des informations produit. Elle :
+L'API fournie constitue la source de référence des informations produit.
+Elle :
 
-- fournit la liste des produits ;
-- renvoie les détails d'un produit à partir de son identifiant numérique ou de son SKU ;
+- liste les produits, avec filtres optionnels par catégorie et recherche
+  libre ;
+- renvoie les détails d'un produit à partir de son identifiant numérique
+  ou de son SKU ;
 - est accessible uniquement en lecture ;
 - ne gère pas les quantités de stock propres à HBntory.
 
-Le Backoffice vérifie l'existence d'un produit auprès de cette API avant de créer un stock. Seul l'identifiant numérique canonique renvoyé par l'API est conservé.
+Le Backoffice vérifie l'existence d'un produit auprès de cette API avant
+de créer une ligne de stock. Seul l'identifiant numérique canonique `id`
+renvoyé par l'API est conservé — pas le champ `sku`, distinct.
 
 ### Serveur MCP Produit
 
-Le serveur MCP Produit est un service indépendant servant d'intermédiaire avec l'API Produit. Il expose au minimum :
+`product_mcp_server/` est un pont indépendant vers l'API Produit externe,
+exposant deux outils via MCP (Streamable HTTP) :
 
-- `list_products` : renvoie les produits disponibles avec leurs identifiants et un résumé utile ;
-- `get_product_details` : renvoie un produit à partir de son identifiant numérique ou de son SKU.
+- `list_products` : résumés de produits, paginés et allégés ;
+- `get_product_details` : un produit complet par identifiant numérique ou
+  SKU.
 
-Le serveur MCP est lui-même un simple pont et ne contient aucun agent IA. Ses outils sont appelés via MCP sur HTTP Streamable — par le service web public pendant la phase de base, puis par l'AI Query Service une fois la phase finale livrée. Le serveur MCP ne modifie jamais les produits et n'enregistre pas leurs métadonnées.
-
-### Service client public et interface web
-
-Le composant `client_web` fournit une page de recherche anonyme et un petit backend REST. Il :
-
-- permet aux visiteurs de rechercher des produits ;
-- affiche les détails du produit sélectionné ;
-- indique les agences qui possèdent ce produit et les quantités disponibles ;
-- liste les produits disponibles dans une agence sélectionnée ;
-- obtient les données produit auprès du serveur MCP Produit ;
-- effectue des consultations de stock contrôlées et en lecture seule avec SQLAlchemy ;
-- traite chaque requête indépendamment et ne conserve aucun historique.
-
-Le service public ne peut ni créer des utilisateurs ni modifier les stocks.
-
-### AI Query Service (phase finale)
-
-L'AI Query Service est un backend indépendant, distinct du Backoffice, ajouté une fois la base déterministe (phases 1 à 6) stabilisée. Il :
-
-- reçoit une question en langage naturel depuis l'interface web publique via REST ;
-- utilise un ou plusieurs agents IA pour élaborer une réponse ;
-- obtient les données produit au moyen des outils du serveur MCP Produit ;
-- obtient les stocks via un accès contrôlé en lecture seule ;
-- ne renvoie que des réponses fondées sur les données, et indique clairement lorsqu'une information est indisponible ;
-- n'invente aucun nom de produit, détail, quantité de stock ou disponibilité en agence ;
-- traite chaque requête indépendamment et ne conserve aucun historique de conversation.
-
-Dans cet état final, l'interface web publique appelle l'AI Query Service plutôt que le serveur MCP directement.
+C'est un simple pont, sans agent IA, sans état. **Rien dans ce projet ne
+l'utilise actuellement** — l'AI Query Service qui devait le faire (Phase 7
+du plan initial) n'a jamais été construit, conformément au périmètre final
+retenu. Il est livré complet et vérifié indépendamment contre la vraie API
+Produit (voir `product_mcp_server/README.md`), prêt à être branché à un
+agent dans un futur développement.
 
 ## 3. Circulation des données
 
 ### Authentification du Backoffice
 
-1. L'utilisateur transmet ses identifiants à l'API Gateway, qui les route vers le Backoffice sans les lire.
-2. Le Backoffice récupère le compte actif et vérifie le mot de passe à partir de son empreinte Argon2id.
-3. Une authentification réussie crée un cookie de session signé et inaccessible à JavaScript.
-4. Chaque requête protégée transite de nouveau par l'API Gateway, qui la transmet telle quelle ; le Backoffice vérifie le rôle, l'état du compte et l'agence.
+1. Le navigateur transmet ses identifiants directement au Backoffice
+   (`POST /api/auth/login`) — aucune passerelle devant.
+2. Le Backoffice récupère le compte actif et vérifie le mot de passe à
+   partir de son empreinte Argon2id (avec un hash factice fixe utilisé
+   quand le nom d'utilisateur n'existe pas, pour ne pas laisser fuir
+   quels noms sont réels via le temps de réponse).
+3. Une authentification réussie crée un cookie de session signé,
+   `HttpOnly`, contenant l'identifiant de l'utilisateur et son
+   `token_version` actuel.
+4. Chaque requête protégée recharge l'utilisateur depuis la base et
+   vérifie : la signature et l'expiration du cookie, le statut actif du
+   compte, et que `token_version` correspond toujours (voir "Déconnexion"
+   ci-dessous).
 
-### Consultation des stocks dans le Backoffice
+### Consultation et modification du stock
 
-1. L'utilisateur commun demande à consulter son stock via l'API Gateway, qui route la requête vers le Backoffice.
-2. Le serveur déduit son agence du compte authentifié.
-3. SQLAlchemy récupère les identifiants produit et les quantités enregistrées localement.
-4. Le Backoffice demande les informations correspondantes à l'API Produit.
-5. La réponse combinée est affichée sans enregistrer localement les informations produit.
+1. Un utilisateur commun consulte ou modifie le stock de son agence
+   (`GET/POST /api/stock/*`).
+2. Le serveur déduit l'agence de la session authentifiée, jamais du corps
+   de la requête.
+3. SQLAlchemy lit/écrit dans la table locale `stocks`.
+4. L'identifiant produit est validé auprès de l'API Produit externe avant
+   la création d'une nouvelle ligne de stock.
+5. Une vérification d'entier positif et une contrainte `CHECK` en base
+   empêchent conjointement toute quantité négative ; un retrait supérieur
+   au stock disponible est refusé.
 
-### Modification des stocks
+### Recherche dans le catalogue public
 
-1. La requête transite par l'API Gateway, qui la route vers le Backoffice.
-2. Le serveur vérifie qu'il s'agit d'un utilisateur commun actif.
-3. Il déduit l'agence du compte authentifié.
-4. Il n'accepte qu'une quantité entière strictement positive.
-5. Il valide le produit auprès de l'API externe.
-6. Il modifie le stock dans une transaction.
-7. Un retrait est refusé si la quantité disponible est insuffisante.
-8. Une contrainte de base de données garantit que la quantité ne devient jamais négative.
+1. Un visiteur anonyme recherche ou filtre le catalogue
+   (`GET /api/public/products`, `GET /api/public/categories`) — sans
+   session, sans passerelle.
+2. Le Backoffice appelle directement l'API Produit externe (le même
+   module `product_client.py` que le côté authentifié).
+3. Les résultats sont renvoyés tels quels ; rien n'est stocké localement,
+   et aucune requête en base n'intervient sur ce chemin.
 
-### Recherche publique de produits et de stocks
+### Déconnexion
 
-1. Un visiteur anonyme lance une recherche de produit ou d'agence par REST vers l'API Gateway, qui route la requête vers le Client Web.
-2. Le service client public appelle le serveur MCP Produit pour obtenir les informations produit.
-3. Le serveur MCP appelle l'API Produit externe en lecture seule.
-4. Lorsqu'une information de stock est nécessaire, le service client public effectue une requête contrôlée et en lecture seule dans la base.
-5. Le service combine les résultats et renvoie des données structurées à la page.
-6. Aucun historique n'est conservé. Ce flux déterministe constitue la base ; le flux de requête IA ci-dessous est ajouté en phase finale.
-
-### Requête IA (phase finale)
-
-1. Un visiteur anonyme envoie une question en langage naturel via REST.
-2. L'interface web publique transmet la question à l'AI Query Service.
-3. Un agent IA obtient les données produit via le serveur MCP Produit et les stocks via un accès contrôlé en lecture seule.
-4. L'agent compose une réponse fondée uniquement sur les données récupérées.
-5. Si les outils ne renvoient rien, le service indique que l'information est indisponible.
-6. Chaque requête est indépendante et aucun historique n'est conservé.
+1. Le client appelle `POST /api/auth/logout`.
+2. Le serveur incrémente le `token_version` de cet utilisateur en base et
+   supprime le cookie du navigateur.
+3. Comme chaque requête protégée compare le `token_version` du cookie à la
+   valeur actuellement stockée, **tous** les cookies déjà émis pour cet
+   utilisateur — pas seulement celui qu'on supprime — cessent d'être
+   acceptés immédiatement, même si une copie en avait été prise au
+   préalable.
 
 ## 4. Règles de sécurité et d'intégrité
 
-- Aucun mot de passe n'est enregistré en clair.
-- Argon2id est utilisé, car cet algorithme est conçu pour le stockage des mots de passe et résiste aux attaques par force brute grâce à des coûts mémoire et de calcul configurables.
-- Le Backoffice utilise un cookie de session signé, inaccessible à JavaScript et limité au même site. Les requêtes qui modifient des données sont protégées contre les attaques CSRF.
-- L'authentification et les autorisations sont contrôlées côté serveur.
-- `admin` n'est rattaché à aucune agence et ne peut pas modifier les stocks.
-- Chaque utilisateur commun dépend d'une seule agence et ne peut pas en sélectionner une autre.
-- Un utilisateur désactivé ne peut plus s'authentifier ni conserver son accès.
-- Toute modification de stock exige un entier positif et ne peut produire une quantité négative.
-- Les points d'accès publics et leurs accès à la base sont strictement en lecture seule.
-- Les secrets sont fournis par des variables d'environnement et ne sont pas versionnés.
+- Aucun mot de passe n'est enregistré en clair ; Argon2id est utilisé car
+  cet algorithme est conçu pour le stockage des mots de passe et résiste
+  aux attaques par force brute grâce à des coûts mémoire et de calcul
+  configurables (voir `docs/password-security.md`).
+- Le Backoffice utilise un cookie de session signé, `HttpOnly`,
+  `SameSite=Lax`. **Ce n'est pas une protection CSRF complète** —
+  `SameSite=Lax` mitige les soumissions de formulaire cross-site
+  classiques, mais aucun token CSRF explicite n'est présent sur les
+  requêtes qui modifient l'état. Documenté comme limitation connue, non
+  implémenté.
+- L'authentification et les autorisations sont contrôlées côté serveur,
+  pas seulement cachées dans l'interface.
+- `admin` n'est rattaché à aucune agence et ne peut pas modifier les
+  stocks ; un utilisateur commun dépend d'une seule agence et ne peut pas
+  en sélectionner une autre.
+- Un utilisateur désactivé ne peut plus s'authentifier, et une session
+  déjà ouverte pour un utilisateur désactivé est rejetée dès la requête
+  suivante.
+- La déconnexion révoque côté serveur, immédiatement, toutes les sessions
+  de cet utilisateur (voir "Déconnexion" ci-dessus) — plus robuste qu'une
+  approche à token purement stateless qui ne ferait que supprimer le
+  cookie du navigateur.
+- Toute modification de stock exige un entier positif et ne peut produire
+  une quantité négative (validé en code et garanti par une contrainte en
+  base).
+- Les points d'accès du catalogue public sont en lecture seule et ne
+  requièrent aucune session.
+- Les secrets sont fournis par des variables d'environnement et ne sont
+  pas versionnés.
 
-## 5. Livrables associés
+## 5. Hors périmètre
 
+Décision actée avec le responsable du projet, pas un oubli :
+
+- **API Gateway** (Phase 1 initiale) — non construit. Le Backoffice est
+  l'unique service ; il sert directement les pages authentifiées et le
+  catalogue public.
+- **AI Query Service** (Phase 7 initiale) — non construit. Aucune réponse
+  en langage naturel n'existe nulle part dans ce projet.
+- Conséquence : le serveur MCP Produit n'a aucun consommateur dans le
+  système livré (voir ci-dessus).
+- Le concept initial de "Public Client Service" — son propre backend
+  appelant le serveur MCP et interrogeant le stock directement — n'a pas
+  non plus été construit ; la page catalogue public réutilise à la place
+  le module `product_client.py` déjà existant du Backoffice, via deux
+  nouveaux endpoints anonymes. Plus simple, et sans besoin d'accès au
+  stock puisque le catalogue n'affiche que des données produit, pas de
+  stock.
+
+## 6. Limitations connues
+
+- **PostgreSQL n'est pas la base livrée.** Le schéma a été conçu à
+  l'origine pour PostgreSQL et `psycopg2-binary` figurait dans les
+  dépendances, mais la configuration locale documentée et testée utilise
+  exclusivement SQLite ; le fichier Docker Compose PostgreSQL inutilisé
+  et la dépendance ont été retirés plutôt que laissés comme un chemin non
+  documenté et non vérifié. Passer à PostgreSQL demanderait de retester
+  le flux complet contre cette base.
+- **Pas de token CSRF explicite.** Voir Section 4.
+- **Pas de limitation de débit sur le login.** Non implémenté, non requis
+  par l'énoncé.
+- **`Base.metadata.create_all()`, pas de migrations.** Il crée les tables
+  manquantes mais ne peut pas modifier une table existante — un
+  changement de schéma impose de supprimer et recréer la base locale.
+  Alembic a été évalué et volontairement écarté pour le périmètre de ce
+  projet.
+
+## 7. Livrables associés
+
+- [Définition du MVP](mvp-definition.md) — le plan initial et ce qui en a
+  été retiré.
 - [Schéma initial des services](initial-service-diagram.md)
 - [Stratégie de communication](communication-strategies.md)
-- [Définition du MVP](mvp-definition.md)
+- [Guide de lancement local](local-run-guide.md)
+- [README du serveur MCP Produit](../product_mcp_server/README.md)

@@ -120,5 +120,5 @@ Chaque endpoint : valide l'entrée, applique le RBAC en backend (pas seulement c
 
 ## Notes de cohérence avec les docs existants
 
-- Si `architecture_FR.md` existe et n'a pas encore été mis à jour (session cookie / AI en Phase 7 optionnelle), il faudra le resynchroniser avec `architecture_EN.md`.
+- [x] `architecture_FR.md`/`architecture_EN.md`/`mvp-definition.md`/`initial-service-diagram.md`/`communication-strategies.md` réalignés sur le système réellement livré (pas d'API Gateway, pas d'AI Query Service, catalogue public sans MCP ni accès DB).
 - Ne pas réintroduire JWT dans le code ou les specs d'API sans rediscuter et remettre à jour `communication-strategies.md`.

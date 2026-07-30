@@ -1,173 +1,214 @@
 # HBntory — System Architecture
 
-## 1. Scope
+## 1. Scope (as delivered)
 
-HBntory is an inventory platform for a company with several physical branches. The implementation is delivered in two stages — a deterministic foundation first, then an AI layer. It contains:
+This document describes the system that was actually built, not the original
+multi-phase plan. See `mvp-definition.md` for the original plan and which
+parts of it were excluded by agreement with the project supervisor.
 
-- a single HTTP entry point through the API Gateway. The browser reaches it the same way for a public account or an admin/employee account; the Gateway then routes the request to the Backoffice or the Client Web Interface without applying any authorisation itself. Authorisation stays determined by the Backoffice;
-- an authenticated Backoffice for internal users;
-- PostgreSQL for users, branches and stock;
-- the supplied read-only Product API;
-- a Product MCP Server that exposes controlled product tools;
-- a public Client Web Interface for product and stock searches;
-- an AI Query Service, added as the final phase, that answers natural-language questions using the MCP tools and stock data.
+HBntory, as delivered, is an inventory platform for a company with several
+physical branches. It contains:
 
-The AI Query Service is delivered in the final phase, after the deterministic foundation is stable — it is deferred, not dropped. Until then, public searches use explicit REST parameters and structured results; once the AI layer lands, the Client Web Interface sends natural-language questions to the AI Query Service, which answers using the same MCP tools and stock data.
+- **the Backoffice** — a single FastAPI service that authenticates internal
+  users (`admin`, `common`) and, on the same app, serves an anonymous public
+  product catalogue page;
+- **SQLite** as the documented and tested local database for users,
+  branches and stock (see "Known limitations" below for PostgreSQL's status);
+- **the supplied read-only external Product API**;
+- **an independent Product MCP Server** (`product_mcp_server/`) that exposes
+  controlled product tools over MCP.
+
+There is **no API Gateway**. There is **no AI Query Service**. Both were
+part of the original plan (`mvp-definition.md` Phases 1 and 7) and were
+excluded from the final scope by agreement with the project supervisor —
+see the "Excluded from scope" section below.
 
 ## 2. Components and Responsibilities
 
-### API Gateway
-
-The API Gateway is the single HTTP entry point of the application, placed in front of the Backoffice and the Client Web Interface. It:
-
-- receives client requests and forwards them to the requested service;
-- handles connection failures such as timeouts;
-- returns an appropriate HTTP error when a request cannot succeed: `404 Not Found` when the requested route does not exist, `502 Bad Gateway` when the downstream response is invalid or unexpected, `503 Service Unavailable` when the downstream service is down, `504 Gateway Timeout` when the downstream service does not respond in time;
-- forwards HTTP headers and the session cookie to the target service unchanged — the Backoffice's existing authentication mechanism is untouched.
-
-The API Gateway has no decision-making power: it routes, it does not decide. It:
-
-- does not handle user authentication;
-- does not read session cookies;
-- does not validate roles or permissions;
-- does not modify forwarded identity information;
-- has no knowledge of branches or business rules;
-- performs no direct operation on the database.
-
 ### Backoffice Service
 
-The Backoffice is a FastAPI service with a plain HTML, CSS and JavaScript interface. It:
+The Backoffice (`backoffice/`) is a single FastAPI service with a plain
+HTML, CSS and JavaScript interface. It serves two things directly, with no
+gateway in front of it:
 
-- authenticates internal users;
-- enforces roles and branch restrictions in the backend;
-- lets the single `admin` user list, create, modify and soft-delete common users;
-- lets `admin` change a common user's password or assigned branch;
-- prevents `admin` from managing stock;
-- lets common users consult, list, add and remove stock only for their assigned branch;
-- accesses local data through SQLAlchemy;
-- obtains product information from the Product API through read-only REST requests.
+- **Authenticated pages** (`/login`, `/stock`, `/users`):
+  - authenticates internal users via a signed, HTTP-only, `SameSite=Lax`
+    session cookie;
+  - enforces roles and branch restrictions in the backend, not just in the
+    UI;
+  - lets the single `admin` user list, create, modify and soft-delete
+    common users, and change their password or branch;
+  - prevents `admin` from managing stock;
+  - lets common users consult, list, add and remove stock only for their
+    assigned branch;
+  - obtains product information from the external Product API through
+    read-only REST requests (`app/services/product_client.py`).
+- **The public catalogue page** (`/`, backed by `client_web/`):
+  - anonymous, no session required;
+  - lets visitors search the product catalogue by keyword and filter by
+    category (`GET /api/public/products`, `GET /api/public/categories`);
+  - calls the external Product API directly through the same
+    `product_client.py` module the authenticated side uses — **not**
+    through the Product MCP Server, and with no database access.
 
-There is only one administrator, named `admin`. Common users belong to exactly one branch. The backend derives a common user's branch from the authenticated account rather than trusting a branch submitted by the browser.
+There is only one administrator, named `admin`. Common users belong to
+exactly one branch. The backend derives a common user's branch from the
+authenticated session rather than trusting a branch submitted by the
+browser.
 
-### PostgreSQL Database
+### Local Database
 
-The local database contains only:
+SQLite (a single file, `dev.db` by default) is the documented and tested
+local database. It contains only:
 
-- `users`: username, password hash, role, branch assignment and soft-deletion state;
-- `branches`: branch identity and name;
-- `stock`: branch, external numeric product ID and available quantity.
+- `users`: username, password hash, role, branch assignment, soft-deletion
+  state, and a `token_version` counter used for session revocation;
+- `branches`: branch identity and location name;
+- `stocks`: branch, external numeric product ID and available quantity.
 
-It does not contain product names, SKUs, descriptions, prices, images or metadata.
+It does not contain product names, SKUs, descriptions, prices, images or
+metadata. See "Known limitations" for PostgreSQL's status.
 
 ### External Product API
 
 The supplied API is the authoritative source of product information. It:
 
-- lists products;
+- lists products, with optional category and free-text filters;
 - returns product details by numeric ID or SKU;
 - is read-only;
 - does not own or return HBntory stock quantities.
 
-The Backoffice validates product identifiers against this API before creating stock records. It stores only the canonical numeric product `id` returned by the API.
+The Backoffice validates product identifiers against this API before
+creating stock records. It stores only the canonical numeric product `id`
+returned by the API — the API's `id` field, not its separate `sku` string.
 
 ### Product MCP Server
 
-The Product MCP Server is an independent bridge to the external Product API. It exposes at least:
+`product_mcp_server/` is an independent bridge to the external Product API,
+exposing two tools over MCP (Streamable HTTP):
 
-- `list_products`: return available products with useful identifiers and summaries;
-- `get_product_details`: return one product by numeric ID or SKU.
+- `list_products`: paginated, trimmed product summaries;
+- `get_product_details`: one full product record by numeric ID or SKU.
 
-The MCP server is itself a plain bridge and contains no AI agent. Its tools are invoked over MCP over Streamable HTTP — by the public Client Service in the foundation stage, and by the AI Query Service once the final phase lands. The MCP server never modifies products or stores their metadata.
-
-### Public Client Service and Web Interface
-
-The `client_web` component serves an anonymous search page and a small REST backend. It:
-
-- lets visitors search the product catalogue;
-- displays details for a selected product;
-- shows which branches hold that product and the available quantities;
-- lists products held by a selected branch;
-- obtains product data through the Product MCP Server;
-- performs controlled, read-only stock queries through SQLAlchemy;
-- treats every request independently and stores no search history.
-
-The public service cannot create users or change stock.
-
-### AI Query Service (final phase)
-
-The AI Query Service is an independent backend, separate from the Backoffice, added once the deterministic foundation (Phases 1–6) is stable. It:
-
-- receives a natural-language question from the Client Web Interface over REST;
-- uses one or more AI agents to plan an answer;
-- obtains product data through the Product MCP Server tools;
-- obtains stock through controlled, read-only access;
-- returns grounded answers only, and states clearly when information is unavailable;
-- invents no product names, details, stock values or branch availability;
-- treats every request independently and stores no conversation history.
-
-In this end state the Client Web Interface calls the AI Query Service rather than the MCP server directly.
+It is a plain bridge with no AI agent, and holds no state. **Nothing in
+this project currently consumes it** — the AI Query Service that was meant
+to (Phase 7 of the original plan) was never built, per the agreed final
+scope. It ships complete and independently verified against the real
+Product API (see `product_mcp_server/README.md`), ready to be connected to
+an agent in future work.
 
 ## 3. Data Flow
 
 ### Backoffice Authentication
 
-1. The user submits credentials to the API Gateway, which routes them to the Backoffice without reading them.
-2. The Backoffice retrieves the active user and verifies the password against its Argon2id hash.
-3. Successful authentication creates a signed, HTTP-only session cookie.
-4. Every protected request passes through the API Gateway again, unchanged; the Backoffice checks role, active status and branch assignment.
+1. The browser submits credentials directly to the Backoffice
+   (`POST /api/auth/login`) — no gateway in front of it.
+2. The Backoffice retrieves the active user and verifies the password
+   against its Argon2id hash (with a fixed dummy hash used when the
+   username doesn't exist, to avoid leaking which usernames are real
+   through timing).
+3. Successful authentication creates a signed, HTTP-only session cookie
+   containing the user's ID and their current `token_version`.
+4. Every protected request reloads the user from the database and checks:
+   the signature and expiry of the cookie, the user's active status, and
+   that `token_version` still matches (see "Logout" below).
 
-### Backoffice Stock Consultation
+### Backoffice Stock Consultation and Change
 
-1. A common user requests their stock through the API Gateway, which routes the request to the Backoffice.
-2. The backend obtains the branch from the authenticated account.
-3. SQLAlchemy retrieves local product IDs and quantities.
-4. The Backoffice retrieves corresponding product details from the Product API.
-5. The combined response is displayed without storing product details locally.
+1. A common user requests or changes their branch's stock
+   (`GET/POST /api/stock/*`).
+2. The backend derives the branch from the authenticated session, never
+   from the request body.
+3. SQLAlchemy reads/writes the local `stocks` table.
+4. Product identifiers are validated against the external Product API
+   before a new stock row is created.
+5. A positive-integer check and a database `CHECK` constraint together
+   prevent negative quantities; removing more than what's in stock is
+   rejected.
 
-### Backoffice Stock Change
+### Public Catalogue Search
 
-1. The request passes through the API Gateway, which routes it to the Backoffice.
-2. The backend verifies that the user is an active common user.
-3. It derives the user's branch from the authenticated account.
-4. It accepts only a positive integer quantity.
-5. It validates the product through the Product API.
-6. It changes stock inside a database transaction.
-7. Removal fails when the available quantity is insufficient.
-8. A database constraint guarantees that quantity cannot become negative.
+1. An anonymous visitor searches or filters the catalogue
+   (`GET /api/public/products`, `GET /api/public/categories`) — no
+   session, no gateway.
+2. The Backoffice calls the external Product API directly (the same
+   `product_client.py` code the authenticated side uses).
+3. Results are returned as-is; nothing is stored locally, and no database
+   query is involved on this path at all.
 
-### Public Product and Stock Search
+### Logout
 
-1. An anonymous visitor submits a product or branch search through REST to the API Gateway, which routes the request to the Client Web Interface.
-2. The Public Client Service calls the Product MCP Server for product information.
-3. The MCP server calls the external Product API through read-only REST.
-4. When stock is needed, the Public Client Service performs a controlled read-only database query.
-5. The service combines the results and returns structured data to the page.
-6. No search history is stored. This deterministic flow is the foundation; the AI query flow below is added in the final phase.
-
-### AI Query (final phase)
-
-1. An anonymous visitor submits a natural-language question through REST.
-2. The Client Web Interface forwards the question to the AI Query Service.
-3. An AI agent obtains product data through the Product MCP Server and stock through controlled, read-only access.
-4. The agent composes a grounded answer from the retrieved data only.
-5. If the tools return nothing, the service states that the information is unavailable.
-6. Each request is independent and no history is stored.
+1. The client calls `POST /api/auth/logout`.
+2. The backend increments that user's `token_version` in the database and
+   deletes the browser's cookie.
+3. Because every protected request compares the cookie's `token_version`
+   against the current stored value, **every** cookie previously issued
+   for that user — not just the one being deleted — stops being accepted
+   immediately, even if a copy of it was taken beforehand.
 
 ## 4. Security and Integrity Rules
 
-- Passwords are never stored in plain text.
-- Argon2id is used because it is designed for password storage and resists brute-force attacks through configurable memory and computation costs.
-- The Backoffice uses a signed, HTTP-only, same-site session cookie. State-changing requests use CSRF protection.
-- Authentication and authorisation are enforced in the backend.
-- `admin` has no branch and cannot use stock operations.
-- A common user has exactly one branch and cannot select another branch.
-- Soft-deleted users cannot authenticate or retain access.
-- Stock changes require positive integers and cannot make quantity negative.
-- Public endpoints and database access are read-only.
+- Passwords are never stored in plain text; Argon2id is used because it is
+  designed for password storage and resists brute-force attacks through
+  configurable memory and computation costs (see `docs/password-security.md`).
+- The Backoffice uses a signed, HTTP-only, `SameSite=Lax` session cookie.
+  **This is not full CSRF protection** — `SameSite=Lax` mitigates ordinary
+  cross-site form submissions, but there is no explicit CSRF token on
+  state-changing requests. Documented as a known limitation, not
+  implemented.
+- Authentication and authorisation are enforced in the backend, not just
+  hidden in the UI.
+- `admin` has no branch and cannot use stock operations; a common user has
+  exactly one branch and cannot select another.
+- Soft-deleted users cannot authenticate, and an already-open session for
+  a soft-deleted user is rejected on its next request.
+- Logout revokes server-side, immediately, for every session of that user
+  (see "Logout" above) — this is stronger than a stateless-token approach
+  that only deletes the browser's cookie.
+- Stock changes require positive integers and cannot make quantity
+  negative (validated in code and enforced by a database constraint).
+- The public catalogue endpoints are read-only and require no session.
 - Secrets are supplied through environment variables and are not committed.
 
-## 5. Related Deliverables
+## 5. Excluded from Scope
 
+Agreed with the project supervisor, not an oversight:
+
+- **API Gateway** (original Phase 1) — not built. The Backoffice is the
+  single service; it serves both the authenticated pages and the public
+  catalogue directly.
+- **AI Query Service** (original Phase 7) — not built. No natural-language
+  question answering exists anywhere in this project.
+- Consequently, the Product MCP Server has no consumer in the delivered
+  system (see above).
+- The original "Public Client Service" concept — its own backend calling
+  the MCP server and querying stock directly — was not built either; the
+  public catalogue page instead reuses the Backoffice's existing
+  `product_client.py` module through two new anonymous endpoints. This is
+  simpler and needed no stock access at all, since the catalogue shows
+  product data only, not stock.
+
+## 6. Known Limitations
+
+- **PostgreSQL is not the delivered database.** The schema was originally
+  designed for PostgreSQL and `psycopg2-binary` was in the dependency list,
+  but the documented, tested local setup uses SQLite exclusively; the
+  unused PostgreSQL Docker Compose file and dependency were removed rather
+  than left as an undocumented, unverified path. Switching to PostgreSQL
+  would require re-testing the full flow against it.
+- **No explicit CSRF token.** See Section 4.
+- **No login rate limiting.** Not implemented, not required by the task
+  brief.
+- **`Base.metadata.create_all()`, not migrations.** It creates missing
+  tables but cannot alter an existing one — a schema change requires
+  dropping and recreating the local database. Alembic was evaluated and
+  deliberately not adopted for this project's scope.
+
+## 7. Related Deliverables
+
+- [MVP definition](mvp-definition.md) — the original plan and what was
+  excluded from it.
 - [Initial service diagram](initial-service-diagram.md)
 - [Communication strategy](communication-strategies.md)
-- [MVP definition](mvp-definition.md)
+- [Local run guide](local-run-guide.md)
+- [Product MCP Server README](../product_mcp_server/README.md)
