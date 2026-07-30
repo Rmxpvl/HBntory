@@ -7,7 +7,7 @@ by agreement with the project supervisor — marked inline below.
 
 ## MVP Goal
 
-Deliver a secure inventory Backoffice plus an anonymous, deterministic product-and-stock search interface. Product details come from the supplied API through the appropriate integration path; stock remains in the local database. ~~The AI Query Service is scheduled as the final phase~~ **Excluded from final scope — see Phase 7.**
+Deliver a secure inventory Backoffice plus an anonymous, deterministic product catalogue and search interface. Product details come from the supplied API through the appropriate integration path; the public catalogue does not expose stock. Stock stays in the local database, behind Backoffice authentication. ~~The AI Query Service is scheduled as the final phase~~ **Excluded from final scope — see Phase 7.**
 
 ## Phase 1 — Database and Backoffice Foundation
 
